@@ -20,15 +20,11 @@ interface Props {
   escuro?: boolean;
 }
 
-interface Ultimo {
-  r: Rolagem;
-  arma?: Preset;
-}
 
 export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestre, escuro }: Props) {
   const [expr, setExpr] = useState("");
   const [secreta, setSecreta] = useState(false);
-  const [ultimo, setUltimo] = useState<Ultimo | null>(null);
+  const [ultimos, setUltimos] = useState<Rolagem[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [rolando, setRolando] = useState(false);
   const [organizando, setOrganizando] = useState(false);
@@ -45,16 +41,23 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
   });
   const presets = todosPresets.linhas.filter((p) => (p.personagem_id ?? null) === personagemId);
 
-  async function executar(pedido: Parameters<typeof rolar>[0], arma?: Preset) {
+  async function chamar(pedido: Parameters<typeof rolar>[0]): Promise<Rolagem> {
+    const r = await rolar({ ...pedido, secreta });
+    feed.setLinhas((l) => (l.some((x) => x.id === r.id) ? l : [r as L<Rolagem>, ...l]));
+    return r;
+  }
+
+  /** Rola uma ou mais coisas em sequência e mostra todas no topo. */
+  async function executar(...passos: ((anteriores: Rolagem[]) => Parameters<typeof rolar>[0])[]) {
     setErro(null);
     setRolando(true);
+    const feitos: Rolagem[] = [];
     try {
-      const r = await rolar({ ...pedido, secreta });
-      setUltimo({ r, arma });
-      feed.setLinhas((l) => (l.some((x) => x.id === r.id) ? l : [r as L<Rolagem>, ...l]));
+      for (const passo of passos) feitos.push(await chamar(passo(feitos)));
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível rolar.");
     } finally {
+      setUltimos(feitos);
       setRolando(false);
     }
   }
@@ -62,25 +65,35 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
   const base = { mesaId, personagemId };
 
   function rolarPreset(p: Preset) {
-    if (p.tipo === "teste" || p.tipo === "arma") {
-      const e = expressaoDoTeste(atributos, (p.atributo ?? "AGI") as Atributo, p.bonus);
-      return executar(
-        { ...base, expressao: e, titulo: p.tipo === "arma" ? `${p.titulo}: ataque` : p.titulo, margem: p.margem },
-        p.tipo === "arma" ? p : undefined,
-      );
+    const teste = () => ({
+      ...base,
+      expressao: expressaoDoTeste(atributos, (p.atributo ?? "AGI") as Atributo, p.bonus),
+      titulo: p.tipo === "arma" ? `${p.titulo}: ataque` : p.titulo,
+      margem: p.margem,
+    });
+    if (p.tipo === "teste") return executar(teste);
+    if (p.tipo === "arma") {
+      // ataque + dano num toque só; se o ataque critar, o dano já sai crítico
+      return executar(teste, ([ataque]) => ({
+        ...base,
+        expressao: p.expressao,
+        titulo: `${p.titulo}: dano${ataque.critico ? " crítico" : ""}`,
+        multiplicador: p.multiplicador,
+        critico: ataque.critico,
+      }));
     }
-    if (p.tipo === "dano") return executar({ ...base, expressao: p.expressao, titulo: p.titulo, multiplicador: p.multiplicador });
-    return executar({ ...base, expressao: p.expressao, titulo: p.titulo });
+    if (p.tipo === "dano") return executar(() => ({ ...base, expressao: p.expressao, titulo: p.titulo, multiplicador: p.multiplicador }));
+    return executar(() => ({ ...base, expressao: p.expressao, titulo: p.titulo }));
   }
 
-  function rolarDano(arma: Preset, critico: boolean) {
-    return executar({
+  function rolarDanoCritico(p: Preset) {
+    return executar(() => ({
       ...base,
-      expressao: arma.expressao,
-      titulo: `${arma.titulo}: dano${critico ? " crítico" : ""}`,
-      multiplicador: arma.multiplicador,
-      critico,
-    });
+      expressao: p.expressao,
+      titulo: `${p.titulo}: dano crítico`,
+      multiplicador: p.multiplicador,
+      critico: true,
+    }));
   }
 
   async function mover(p: Preset, dir: -1 | 1) {
@@ -123,26 +136,15 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
 
   return (
     <div className="grid gap-4">
-      {/* Resultado mais recente */}
-      {ultimo && (
-        <section aria-live="polite" aria-label="Último resultado">
-          <CartaoRolagem r={ultimo.r} escuro={escuro} destaque />
-          {ultimo.arma && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button onClick={() => rolarDano(ultimo.arma!, false)} className={`rounded-sm py-2 ${t.chip}`} disabled={rolando}>
-                Rolar dano
-              </button>
-              <button
-                onClick={() => rolarDano(ultimo.arma!, true)}
-                className={ultimo.r.critico ? "botao-ouro py-2" : `rounded-sm py-2 ${t.chip}`}
-                disabled={rolando}
-              >
-                Dano crítico ×{ultimo.arma.multiplicador}
-              </button>
-            </div>
-          )}
+      {/* Resultado mais recente (ataque e dano aparecem juntos) */}
+      {ultimos.length > 0 && (
+        <section aria-live="polite" aria-label="Último resultado" className="grid gap-2">
+          {ultimos.map((r) => (
+            <CartaoRolagem key={r.id} r={r} escuro={escuro} destaque />
+          ))}
         </section>
       )}
+      {erro && <p className="rounded-sm border border-pv/40 bg-pv/10 p-2 text-sm text-pv-vivo">{erro}</p>}
 
       {/* Rolagem livre + testes */}
       <section className={`${t.painel} grid gap-3 p-4`}>
@@ -151,7 +153,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
           onSubmit={(e) => {
             e.preventDefault();
             if (!expressaoValida(expr)) return setErro("Use a notação de dados, por exemplo 2d6+3 ou 1d20+5.");
-            executar({ ...base, expressao: expr });
+            executar(() => ({ ...base, expressao: expr }));
           }}
         >
           <input
@@ -170,7 +172,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
         </form>
         <div className="flex flex-wrap gap-1.5">
           {["1d20", "1d6", "2d6", "1d8", "1d10", "1d12", "1d100"].map((d) => (
-            <button key={d} type="button" onClick={() => executar({ ...base, expressao: d })} className={`numeros rounded-sm px-2.5 py-1 ${t.chip}`} disabled={rolando}>
+            <button key={d} type="button" onClick={() => executar(() => ({ ...base, expressao: d }))} className={`numeros rounded-sm px-2.5 py-1 ${t.chip}`} disabled={rolando}>
               {d}
             </button>
           ))}
@@ -187,7 +189,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
                   key={a}
                   type="button"
                   title={NOME_ATRIBUTO[a]}
-                  onClick={() => executar({ ...base, expressao: expressaoDoTeste(atributos, a, 0), titulo: `Teste de ${NOME_ATRIBUTO[a]}` })}
+                  onClick={() => executar(() => ({ ...base, expressao: expressaoDoTeste(atributos, a, 0), titulo: `Teste de ${NOME_ATRIBUTO[a]}` }))}
                   className={`flex flex-col items-center rounded-sm py-1.5 ${t.chip}`}
                   disabled={rolando}
                 >
@@ -203,7 +205,6 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
           <input type="checkbox" checked={secreta} onChange={(e) => setSecreta(e.target.checked)} className="h-4 w-4 accent-[#b8912f]" />
           {eMestre ? "Rolagem secreta (só você vê)" : "Rolar só para o mestre"}
         </label>
-        {erro && <p className="text-sm text-pv-vivo">{erro}</p>}
       </section>
 
       {/* Presets */}
@@ -242,6 +243,15 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
                     ×
                   </button>
                 </span>
+              ) : p.tipo === "dano" || p.tipo === "arma" ? (
+                <button
+                  onClick={() => rolarDanoCritico(p)}
+                  disabled={rolando}
+                  className={`shrink-0 rounded-sm px-2 py-1 text-sm ${t.chip}`}
+                  title="Rolar só o dano, já como crítico"
+                >
+                  crítico
+                </button>
               ) : (
                 <span className={`shrink-0 text-xl ${t.sutil}`} aria-hidden>
                   ⚀
@@ -275,7 +285,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
               .map((per) => (
                 <button
                   key={per.nome}
-                  onClick={() => executar({ ...base, expressao: expressaoDoTeste(atributos, per.atributo, per.bonus), titulo: per.nome })}
+                  onClick={() => executar(() => ({ ...base, expressao: expressaoDoTeste(atributos, per.atributo, per.bonus), titulo: per.nome }))}
                   className={`rounded-sm px-2.5 py-1 ${t.chip}`}
                   disabled={rolando}
                 >
@@ -328,7 +338,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
 
 const TIPOS: { id: TipoPreset; nome: string; ajuda: string }[] = [
   { id: "teste", nome: "Teste", ajuda: "Atributo + bônus de perícia (ex.: Furtividade)." },
-  { id: "arma", nome: "Arma", ajuda: "Ataque e dano juntos (ex.: Katana)." },
+  { id: "arma", nome: "Arma", ajuda: "Um toque rola o ataque e o dano. Se o ataque critar, o dano já sai crítico." },
   { id: "dano", nome: "Dano", ajuda: "Só os dados de dano." },
   { id: "livre", nome: "Livre", ajuda: "Qualquer combinação de dados." },
 ];

@@ -85,7 +85,9 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 2. Ficha completa + Escudo do Mestre + Âncora (aliados só com nome e NEX)
 - [x] 3. Rolagem de dados com presets
 - [ ] 4. Combate/iniciativa
-- [ ] 5. Códice da Lore com grafo e visibilidade
+- [x] 4. Catálogo (Livro de Regras) + itens, habilidades e rituais na ficha
+- [ ] 5. Combate/iniciativa
+- [ ] 6. Códice da Lore com grafo e visibilidade
 - [ ] 6. Linha do tempo
 - [ ] 7. Polimento visual e deploy
 

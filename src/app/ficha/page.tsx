@@ -5,23 +5,25 @@ import { useEffect, useState } from "react";
 import { Brasao } from "@/components/Brasao";
 import { Conexao } from "@/components/Conexao";
 import { FichaCompleta } from "@/components/FichaCompleta";
+import { Inventario } from "@/components/Inventario";
 import { Notas } from "@/components/Notas";
 import { Rolador } from "@/components/Rolador";
 import { varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { useMesa } from "@/lib/useMesa";
 
-type Aba = "ficha" | "dados" | "notas";
+type Aba = "ficha" | "itens" | "dados" | "notas";
 
 const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
   { id: "ficha", rotulo: "Ficha", icone: "M4 3h12l4 4v14H4z M8 9h8 M8 13h8 M8 17h5" },
+  { id: "itens", rotulo: "Itens", icone: "M4 8h16v12H4z M9 8V5h6v3 M4 13h16" },
   { id: "dados", rotulo: "Dados", icone: "M12 2l8.66 5v10L12 22l-8.66-5V7z M12 2v20 M3.34 7L20.66 17 M20.66 7L3.34 17" },
   { id: "notas", rotulo: "Notas", icone: "M5 4h14v16H5z M8 8h8 M8 12h8 M8 16h4" },
 ];
 
 export default function PaginaFicha() {
   const router = useRouter();
-  const { carregando, membro, mesa, eMestre, sair } = useSessao();
+  const { carregando, membro, mesa, eMestre, sair, userId } = useSessao();
   const [aba, setAba] = useState<Aba>("ficha");
   const dados = useMesa(mesa?.id, false);
 
@@ -75,6 +77,10 @@ export default function PaginaFicha() {
           ) : (
             <p className="folha p-4 italic">Carregando sua ficha…</p>
           ))}
+
+        {aba === "itens" && eu && (
+          <Inventario personagem={eu} forca={meusDetalhes?.atributos?.FOR ?? 0} dados={dados} userId={userId} />
+        )}
 
         {aba === "dados" && eu && (
           <Rolador
