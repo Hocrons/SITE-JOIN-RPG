@@ -7,17 +7,20 @@ import { Conexao } from "@/components/Conexao";
 import { FichaCompleta } from "@/components/FichaCompleta";
 import { Inventario } from "@/components/Inventario";
 import { Notas } from "@/components/Notas";
+import { OrdemTurnos } from "@/components/OrdemTurnos";
+import { useCombateAtivo } from "@/lib/combate";
 import { Rolador } from "@/components/Rolador";
 import { varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { useMesa } from "@/lib/useMesa";
 
-type Aba = "ficha" | "itens" | "dados" | "notas";
+type Aba = "ficha" | "itens" | "dados" | "combate" | "notas";
 
 const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
   { id: "ficha", rotulo: "Ficha", icone: "M4 3h12l4 4v14H4z M8 9h8 M8 13h8 M8 17h5" },
   { id: "itens", rotulo: "Itens", icone: "M4 8h16v12H4z M9 8V5h6v3 M4 13h16" },
   { id: "dados", rotulo: "Dados", icone: "M12 2l8.66 5v10L12 22l-8.66-5V7z M12 2v20 M3.34 7L20.66 17 M20.66 7L3.34 17" },
+  { id: "combate", rotulo: "Combate", icone: "M5 19L19 5 M15 5h4v4 M9 19H5v-4 M5 5l5 5 M19 19l-5-5" },
   { id: "notas", rotulo: "Notas", icone: "M5 4h14v16H5z M8 8h8 M8 12h8 M8 16h4" },
 ];
 
@@ -26,6 +29,7 @@ export default function PaginaFicha() {
   const { carregando, membro, mesa, eMestre, sair, userId } = useSessao();
   const [aba, setAba] = useState<Aba>("ficha");
   const dados = useMesa(mesa?.id, false);
+  const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
 
   useEffect(() => {
     if (carregando) return;
@@ -92,6 +96,8 @@ export default function PaginaFicha() {
           />
         )}
 
+        {aba === "combate" && <OrdemTurnos mesaId={mesa.id} meuPersonagem={membro.personagem_id} />}
+
         {aba === "notas" && (
           <Notas
             key={membro.personagem_id ?? ""}
@@ -115,6 +121,9 @@ export default function PaginaFicha() {
                   aba === a.id ? "text-marinho" : "text-tinta-suave/70"
                 }`}
               >
+                {a.id === "combate" && combateAtivo && aba !== "combate" && (
+                  <span className="absolute ml-5 h-2.5 w-2.5 rounded-full bg-pv" aria-label="combate em andamento" />
+                )}
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <path d={a.icone} />
                 </svg>

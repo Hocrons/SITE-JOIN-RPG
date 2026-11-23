@@ -9,6 +9,8 @@ import { Condicoes } from "@/components/Condicoes";
 import { Conexao } from "@/components/Conexao";
 import { camposVisiveis } from "@/components/FichaCompleta";
 import { FotoPersonagem } from "@/components/FotoPersonagem";
+import { NavMestre } from "@/components/NavMestre";
+import { useCombateAtivo } from "@/lib/combate";
 import { Rolador } from "@/components/Rolador";
 import { alerta, descricaoPersonagem, fichaAtiva, varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
@@ -41,6 +43,7 @@ export default function Escudo() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [pinsAbertos, setPinsAbertos] = useState(false);
   const [dadosAbertos, setDadosAbertos] = useState(false);
+  const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
 
   useEffect(() => {
     if (carregando) return;
@@ -91,6 +94,7 @@ export default function Escudo() {
             <h1 className="titulo text-2xl text-ouro-claro">{mesa.nome}</h1>
             <p className="text-sm italic text-nevoa/60">Escudo do Mestre · código {mesa.codigo}</p>
           </div>
+          <NavMestre emCombate={!!combateAtivo} />
           <Conexao status={dados.personagens.status} escuro />
           <button onClick={() => setPinsAbertos(true)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
             PINs de acesso

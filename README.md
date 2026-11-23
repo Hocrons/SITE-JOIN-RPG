@@ -86,7 +86,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 3. Rolagem de dados com presets
 - [x] 4. Catálogo (Livro de Regras) + itens, habilidades e rituais na ficha
 - [x] 4b. Catálogo: Arquivos Secretos 1–7 e 9
-- [ ] 5. Combate/iniciativa
+- [x] 5. Combate/iniciativa
 - [ ] 6. Códice da Lore (mestre) com grafo e visibilidade
 - [ ] 7. Lore pessoal do jogador (estilo Obsidian)
 - [ ] 8. Quadro de investigação
