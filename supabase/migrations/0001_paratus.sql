@@ -889,6 +889,11 @@ alter table public.eventos                 enable row level security;
 alter table public.eventos_revelados       enable row level security;
 alter table public.eventos_entradas        enable row level security;
 
+-- Acesso da API às tabelas (o RLS acima decide linha por linha o que cada um vê).
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+
 -- Tabelas de segredo: sem políticas + sem privilégios.
 revoke all on public.mesas_credenciais, public.personagens_pin, public.tentativas_pin from anon, authenticated;
 
