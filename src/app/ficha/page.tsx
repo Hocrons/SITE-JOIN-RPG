@@ -6,13 +6,16 @@ import { Brasao } from "@/components/Brasao";
 import { Conexao } from "@/components/Conexao";
 import { FichaCompleta } from "@/components/FichaCompleta";
 import { Notas } from "@/components/Notas";
+import { Rolador } from "@/components/Rolador";
+import { varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { useMesa } from "@/lib/useMesa";
 
-type Aba = "ficha" | "notas";
+type Aba = "ficha" | "dados" | "notas";
 
 const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
   { id: "ficha", rotulo: "Ficha", icone: "M4 3h12l4 4v14H4z M8 9h8 M8 13h8 M8 17h5" },
+  { id: "dados", rotulo: "Dados", icone: "M12 2l8.66 5v10L12 22l-8.66-5V7z M12 2v20 M3.34 7L20.66 17 M20.66 7L3.34 17" },
   { id: "notas", rotulo: "Notas", icone: "M5 4h14v16H5z M8 8h8 M8 12h8 M8 16h4" },
 ];
 
@@ -34,6 +37,9 @@ export default function PaginaFicha() {
 
   const eu = dados.personagens.linhas.find((p) => p.id === membro.personagem_id);
   const privado = dados.privados.linhas.find((p) => p.personagem_id === membro.personagem_id);
+  const meusDetalhes = eu
+    ? dados.detalhes.linhas.find((d) => d.personagem_id === eu.id && d.variante === varianteAtiva(eu))
+    : undefined;
   const companheiros = dados.publico.linhas.filter((p) => p.id !== membro.personagem_id && !p.arquivado);
 
   return (
@@ -69,6 +75,16 @@ export default function PaginaFicha() {
           ) : (
             <p className="folha p-4 italic">Carregando sua ficha…</p>
           ))}
+
+        {aba === "dados" && eu && (
+          <Rolador
+            mesaId={mesa.id}
+            personagemId={eu.id}
+            atributos={meusDetalhes?.atributos}
+            pericias={meusDetalhes?.pericias ?? []}
+            eMestre={false}
+          />
+        )}
 
         {aba === "notas" && (
           <Notas

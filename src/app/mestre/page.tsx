@@ -9,6 +9,7 @@ import { Condicoes } from "@/components/Condicoes";
 import { Conexao } from "@/components/Conexao";
 import { camposVisiveis } from "@/components/FichaCompleta";
 import { FotoPersonagem } from "@/components/FotoPersonagem";
+import { Rolador } from "@/components/Rolador";
 import { alerta, descricaoPersonagem, fichaAtiva, varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +40,7 @@ export default function Escudo() {
   const dados = useMesa(mesa?.id, true);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [pinsAbertos, setPinsAbertos] = useState(false);
+  const [dadosAbertos, setDadosAbertos] = useState(false);
 
   useEffect(() => {
     if (carregando) return;
@@ -207,6 +209,23 @@ export default function Escudo() {
           </ol>
         </section>
       </div>
+
+      <button
+        onClick={() => setDadosAbertos((x) => !x)}
+        aria-expanded={dadosAbertos}
+        className="botao-ouro fixed bottom-5 right-5 z-30 px-5 py-3 shadow-lg"
+      >
+        {dadosAbertos ? "Fechar dados" : "⚀ Dados"}
+      </button>
+      {dadosAbertos && (
+        <aside
+          className="fixed inset-y-0 right-0 z-20 w-full max-w-md overflow-y-auto border-l border-ouro/25 bg-noite/97 px-4 pb-24 pt-5 shadow-2xl backdrop-blur"
+          aria-label="Dados do mestre"
+        >
+          <h2 className="titulo mb-3 text-xl text-ouro-claro">Dados</h2>
+          <Rolador mesaId={mesa.id} personagemId={null} eMestre escuro />
+        </aside>
+      )}
 
       {pinsAbertos && <JanelaPins mesaId={mesa.id} pjs={pjs} onFechar={() => setPinsAbertos(false)} />}
     </main>

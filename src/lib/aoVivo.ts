@@ -13,6 +13,8 @@ interface Opcoes<T> {
   ordenar?: (a: T, b: T) => number;
   /** Ligar/desligar (ex.: só para o mestre). */
   ativo?: boolean;
+  /** Buscar só as N mais recentes por esta coluna (ex.: feed de rolagens). */
+  limite?: { coluna: string; n: number };
 }
 
 /**
@@ -22,7 +24,21 @@ interface Opcoes<T> {
 export function useAoVivo<T extends Record<string, unknown>>(
   tabela: string,
   mesaId: string | null | undefined,
-  { chave, ordenar, ativo = true }: Opcoes<T>,
+  { chave, ordenar, ativo = true, limite }: Opcoes<T>,
+) {
+  const limColuna = limite?.coluna;
+  const limN = limite?.n;
+  return useAoVivoInterno<T>(tabela, mesaId, chave, ordenar, ativo, limColuna, limN);
+}
+
+function useAoVivoInterno<T extends Record<string, unknown>>(
+  tabela: string,
+  mesaId: string | null | undefined,
+  chave: Opcoes<T>["chave"],
+  ordenar: Opcoes<T>["ordenar"],
+  ativo: boolean,
+  limColuna: string | undefined,
+  limN: number | undefined,
 ) {
   const [linhas, setLinhas] = useState<T[]>([]);
   const [status, setStatus] = useState<StatusConexao>("conectando");
@@ -39,9 +55,11 @@ export function useAoVivo<T extends Record<string, unknown>>(
 
   const recarregar = useCallback(async () => {
     if (!mesaId || !ativo) return;
-    const { data, error } = await supabase().from(tabela).select("*").eq("mesa_id", mesaId);
+    let q = supabase().from(tabela).select("*").eq("mesa_id", mesaId);
+    if (limColuna && limN) q = q.order(limColuna, { ascending: false }).limit(limN);
+    const { data, error } = await q;
     if (!error && data) setLinhas(aplicarOrdem(data as T[]));
-  }, [tabela, mesaId, ativo, aplicarOrdem]);
+  }, [tabela, mesaId, ativo, aplicarOrdem, limColuna, limN]);
 
   useEffect(() => {
     if (!mesaId || !ativo) {

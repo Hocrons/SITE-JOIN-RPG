@@ -83,7 +83,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 ## Etapas
 - [x] 1. Banco, acesso e sincronização em tempo real
 - [x] 2. Ficha completa + Escudo do Mestre + Âncora (aliados só com nome e NEX)
-- [ ] 3. Rolagem de dados com presets
+- [x] 3. Rolagem de dados com presets
 - [ ] 4. Combate/iniciativa
 - [ ] 5. Códice da Lore com grafo e visibilidade
 - [ ] 6. Linha do tempo
