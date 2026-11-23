@@ -38,7 +38,6 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
-5. Rode, em ordem, cada arquivo de `supabase/migrations/` a partir do `0002` (um por query).
 5. Depois, a cada etapa nova, rode os arquivos novos de `supabase/migrations/` em ordem (`0002_...`, `0003_...`), um por query.
 6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
