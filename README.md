@@ -49,7 +49,7 @@ npm run dev                    # http://localhost:3000
 
 ### 3. Vercel
 1. Em <https://vercel.com> → **Add New → Project** → importe o repositório do GitHub.
-2. Em **Environment Variables**, cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. Em **Environment Variables**, cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 3. **Deploy.** Cada `git push` publica de novo automaticamente.
 
 ### PINs iniciais do seed (troque!)
