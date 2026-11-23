@@ -188,7 +188,7 @@ body {
 .segmentos > button:active {
   background: color-mix(in oklab, var(--color-ouro) 45%, var(--color-pergaminho-claro));
 }
-.segmentos > button:nth-child(-n + 2) {
+.segmentos.ajuste > button:nth-child(-n + 2) {
   color: var(--color-pv);
 }
 .tema-mestre .segmentos {
@@ -206,7 +206,7 @@ body {
 .tema-mestre .segmentos > button:hover {
   background: rgba(226, 194, 119, 0.1);
 }
-.tema-mestre .segmentos > button:nth-child(-n + 2) {
+.tema-mestre .segmentos.ajuste > button:nth-child(-n + 2) {
   color: #e0897f;
 }
 
@@ -291,4 +291,14 @@ body {
 .painel.em-perigo {
   border-left: 4px solid var(--color-pv-vivo);
   background: linear-gradient(90deg, rgba(192, 57, 47, 0.12), transparent 40%), var(--color-noite-2);
+}
+
+/* Janelas sobre o conteúdo: papel opaco */
+.folha-solida {
+  background: var(--color-pergaminho-claro);
+}
+.folha-solida input,
+.folha-solida select {
+  width: 100%;
+  min-width: 0;
 }

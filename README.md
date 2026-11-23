@@ -38,7 +38,8 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
-5. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
+5. Depois, a cada etapa nova, rode os arquivos novos de `supabase/migrations/` em ordem (`0002_...`, `0003_...`), um por query.
+6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
 ### 2. Rodar no seu computador (opcional)
 ```bash
@@ -81,7 +82,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 
 ## Etapas
 - [x] 1. Banco, acesso e sincronização em tempo real
-- [ ] 2. Fichas dos jogadores + Escudo do Mestre + Âncora
+- [x] 2. Ficha completa + Escudo do Mestre + Âncora (aliados só com nome e NEX)
 - [ ] 3. Rolagem de dados com presets
 - [ ] 4. Combate/iniciativa
 - [ ] 5. Códice da Lore com grafo e visibilidade

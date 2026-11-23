@@ -160,7 +160,7 @@ export function BarraStatus({
       {trilho}
 
       {editavel && onDelta && (
-        <div className={`segmentos ${grande ? "mt-2.5" : "mt-2"}`} role="group" aria-label={`Ajustar ${nomeCompleto}`}>
+        <div className={`segmentos ajuste ${grande ? "mt-2.5" : "mt-2"}`} role="group" aria-label={`Ajustar ${nomeCompleto}`}>
           {[-5, -1, +1, +5].map((d) => (
             <button key={d} type="button" onClick={() => onDelta(d)} aria-label={`${d > 0 ? "+" : ""}${d} ${rotulo}`}>
               {d > 0 ? `+${d}` : `−${Math.abs(d)}`}

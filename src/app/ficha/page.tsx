@@ -1,0 +1,109 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Brasao } from "@/components/Brasao";
+import { Conexao } from "@/components/Conexao";
+import { FichaCompleta } from "@/components/FichaCompleta";
+import { Notas } from "@/components/Notas";
+import { useSessao } from "@/lib/sessao";
+import { useMesa } from "@/lib/useMesa";
+
+type Aba = "ficha" | "notas";
+
+const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
+  { id: "ficha", rotulo: "Ficha", icone: "M4 3h12l4 4v14H4z M8 9h8 M8 13h8 M8 17h5" },
+  { id: "notas", rotulo: "Notas", icone: "M5 4h14v16H5z M8 8h8 M8 12h8 M8 16h4" },
+];
+
+export default function PaginaFicha() {
+  const router = useRouter();
+  const { carregando, membro, mesa, eMestre, sair } = useSessao();
+  const [aba, setAba] = useState<Aba>("ficha");
+  const dados = useMesa(mesa?.id, false);
+
+  useEffect(() => {
+    if (carregando) return;
+    if (!membro) router.replace("/");
+    else if (eMestre) router.replace("/mestre");
+  }, [carregando, membro, eMestre, router]);
+
+  if (!mesa || !membro || eMestre) {
+    return <p className="p-10 text-center text-lg italic text-tinta-suave">Abrindo sua ficha…</p>;
+  }
+
+  const eu = dados.personagens.linhas.find((p) => p.id === membro.personagem_id);
+  const privado = dados.privados.linhas.find((p) => p.personagem_id === membro.personagem_id);
+  const companheiros = dados.publico.linhas.filter((p) => p.id !== membro.personagem_id && !p.arquivado);
+
+  return (
+    <div className="pb-24">
+      <main className="mx-auto max-w-xl px-4 pt-4">
+        <header className="mb-4 flex items-center gap-3">
+          <Brasao tamanho={30} />
+          <p className="titulo mr-auto text-lg text-marinho">{mesa.nome}</p>
+          <Conexao status={dados.personagens.status} escuro={false} />
+          <button onClick={sair} className="text-sm text-tinta-suave underline underline-offset-2">
+            Sair
+          </button>
+        </header>
+
+        {aba === "ficha" &&
+          (eu ? (
+            <>
+              <FichaCompleta personagem={eu} dados={dados} eMestre={false} />
+              {companheiros.length > 0 && (
+                <section className="mt-7" aria-label="Seus companheiros">
+                  <h2 className="titulo mb-2 text-lg text-marinho">Seus companheiros</h2>
+                  <ul className="folha divide-y divide-ouro-escuro/20 px-4">
+                    {companheiros.map((c) => (
+                      <li key={c.id} className="flex items-baseline justify-between gap-3 py-2.5">
+                        <span className="titulo truncate text-marinho">{c.nome}</span>
+                        <span className="numeros shrink-0 text-tinta-suave">NEX {c.nex ?? "–"}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </>
+          ) : (
+            <p className="folha p-4 italic">Carregando sua ficha…</p>
+          ))}
+
+        {aba === "notas" && (
+          <Notas
+            key={membro.personagem_id ?? ""}
+            valor={privado?.anotacoes ?? ""}
+            onSalvar={(t) => dados.salvarNotas(membro.personagem_id!, t)}
+          />
+        )}
+      </main>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-ouro-escuro/40 bg-pergaminho-claro/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        aria-label="Seções"
+      >
+        <ul className="mx-auto flex max-w-xl">
+          {ABAS.map((a) => (
+            <li key={a.id} className="flex-1">
+              <button
+                onClick={() => setAba(a.id)}
+                aria-current={aba === a.id ? "page" : undefined}
+                className={`flex w-full flex-col items-center gap-0.5 py-2 ${
+                  aba === a.id ? "text-marinho" : "text-tinta-suave/70"
+                }`}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+                  <path d={a.icone} />
+                </svg>
+                <span className={`titulo text-sm ${aba === a.id ? "border-b-2 border-ouro" : "border-b-2 border-transparent"}`}>
+                  {a.rotulo}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  );
+}

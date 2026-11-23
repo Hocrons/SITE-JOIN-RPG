@@ -111,3 +111,28 @@ export interface Rolagem {
 }
 
 export type CampoStatus = "pv_atual" | "san_atual" | "pe_atual" | "pd_atual" | "pv_temp";
+
+export interface PersonagemPublico {
+  id: string;
+  mesa_id: string;
+  tipo: "pj" | "npc" | "ameaca";
+  nome: string;
+  jogador: string | null;
+  nex: number | null;
+  ordem: number;
+  arquivado: boolean;
+}
+
+export interface PersonagemPrivado {
+  personagem_id: string;
+  mesa_id: string;
+  anotacoes: string;
+  inventario: unknown[];
+}
+
+export interface GrupoAncora {
+  id: string;
+  mesa_id: string;
+  nome: string;
+  personagem_ids: string[];
+}

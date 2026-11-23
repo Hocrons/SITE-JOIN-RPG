@@ -35,3 +35,21 @@ export function expressaoTeste(valorAtributo: number, bonus: number): string {
 }
 
 export const ATRIBUTOS: Atributo[] = ["AGI", "FOR", "INT", "PRE", "VIG"];
+
+export function descricaoPersonagem(p: Pick<Personagem, "classe" | "trilha" | "origem">): string {
+  const classe = p.trilha ? `${p.classe ?? ""} (${p.trilha})` : p.classe;
+  return [classe, p.origem && `origem ${p.origem}`].filter(Boolean).join(", ");
+}
+
+/** Condições comuns de Ordem Paranormal (sugestões; qualquer texto é aceito). */
+export const CONDICOES_SUGERIDAS = [
+  "Abalado", "Agarrado", "Alquebrado", "Apavorado", "Asfixiado", "Atordoado", "Caído", "Cego",
+  "Confuso", "Debilitado", "Desprevenido", "Enjoado", "Enlouquecendo", "Enredado", "Envenenado",
+  "Esmorecido", "Exausto", "Fatigado", "Fraco", "Frustrado", "Imóvel", "Inconsciente", "Indefeso",
+  "Lento", "Machucado", "Morrendo", "Ofuscado", "Paralisado", "Pasmo", "Perturbado", "Sangrando",
+  "Surdo", "Surpreendido", "Vulnerável",
+];
+
+export const NOME_ATRIBUTO: Record<Atributo, string> = {
+  AGI: "Agilidade", FOR: "Força", INT: "Intelecto", PRE: "Presença", VIG: "Vigor",
+};
