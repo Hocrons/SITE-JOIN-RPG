@@ -199,9 +199,9 @@ export function ListaCodice({ entradas, selecionado, aoAbrir, eMestre, escuro }:
             >
               <span className="losango mt-2" style={{ background: TIPO[e.tipo].cor }} aria-label={TIPO[e.tipo].nome} />
               <span className="min-w-0 flex-1">
-                <span className={`titulo block truncate ${escuro ? "text-ouro-claro" : "text-marinho"}`}>{e.titulo}</span>
+                <span className={`block truncate ${escuro ? "titulo text-ouro-claro" : "text-[1.08rem] font-semibold text-marinho"}`}>{e.titulo}</span>
                 {e.resumo && (
-                  <span className={`line-clamp-1 text-sm ${escuro ? "text-nevoa/60" : "text-tinta-suave"}`}>{e.resumo}</span>
+                  <span className={`line-clamp-1 text-sm ${escuro ? "text-nevoa/60" : "text-tinta"}`}>{e.resumo}</span>
                 )}
               </span>
               {eMestre && <SeloVisibilidade vis={e.visibilidade} />}

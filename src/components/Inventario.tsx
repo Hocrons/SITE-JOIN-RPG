@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { NavegadorCatalogo } from "./NavegadorCatalogo";
 import {
-  TIPOS, capacidadeCarga, detalhes, linhaCurta, useCatalogo, useItensPersonagem, type EntradaCatalogo, type ItemPersonagem, type Secao,
+  TIPOS, armaComMelhorias, capacidadeCarga, categoriaFinal, detalhes, linhaCurta, useCatalogo, useItensPersonagem,
+  type EntradaCatalogo, type ItemPersonagem, type Melhoria, type Secao,
 } from "@/lib/catalogo";
 import { supabase } from "@/lib/supabase";
 import type { Personagem } from "@/lib/tipos";
@@ -27,6 +28,10 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
   const { todos: catalogo } = useCatalogo(p.mesa_id);
   const [catalogoAberto, setCatalogoAberto] = useState<string | null | false>(false);
   const [aberto, setAberto] = useState<string | null>(null);
+  /** Item que vai receber a próxima modificação/maldição escolhida no catálogo. */
+  const [alvo, setAlvo] = useState<string | null>(null);
+  /** Modificação/maldição escolhida no catálogo geral, esperando o item. */
+  const [semItem, setSemItem] = useState<EntradaCatalogo | null>(null);
 
   const porId = new Map(catalogo.map((c) => [c.id, c]));
   const temMochila = itens.linhas.some((i) => normal(i.nome) === "mochila militar");
@@ -35,7 +40,35 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
     .filter((i) => i.secao === "inventario")
     .reduce((s, i) => s + (Number(i.espacos) || 0) * Math.max(1, i.quantidade), 0);
 
+  const aceitaMelhoria = (i: ItemPersonagem) =>
+    i.secao === "inventario" && ["arma", "municao", "protecao", "item", "item_amaldicoado"].includes(i.tipo ?? "");
+
+  async function aplicar(i: ItemPersonagem, e: EntradaCatalogo) {
+    const atuais = i.melhorias ?? [];
+    if (atuais.some((m) => m.nome === e.nome)) return alert(`${i.nome} já tem ${e.nome}. Iguais não se acumulam.`);
+    const nova: Melhoria = {
+      id: crypto.randomUUID(),
+      catalogo_id: e.id,
+      nome: e.nome,
+      tipo: e.tipo === "maldicao" ? "maldicao" : "modificacao",
+      efeito: e.resumo,
+      elemento: (e.dados.elemento as string) ?? null,
+    };
+    await mudar(i, { melhorias: [...atuais, nova] });
+    setAberto(i.id);
+  }
+
+  async function tirarMelhoria(i: ItemPersonagem, m: Melhoria) {
+    if (!confirm(`Tirar ${m.nome} de ${i.nome}?`)) return;
+    await mudar(i, { melhorias: (i.melhorias ?? []).filter((x) => x.id !== m.id) });
+  }
+
   async function adicionar(e: EntradaCatalogo, secao: Secao) {
+    if (e.tipo === "modificacao" || e.tipo === "maldicao") {
+      const item = alvo ? itens.linhas.find((x) => x.id === alvo) : undefined;
+      if (item) return aplicar(item, e);
+      return setSemItem(e);
+    }
     const d = e.dados as Record<string, unknown>;
     const ordem = itens.linhas.filter((i) => i.secao === secao).length;
     const { data, error } = await supabase()
@@ -78,21 +111,23 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
 
   async function criarPreset(i: ItemPersonagem, c: EntradaCatalogo) {
     const d = c.dados as Record<string, string | number | undefined>;
-    const dano = String(d.dano ?? "").split("/")[0];
     const corpoACorpo = String(d.subtipo ?? "").includes("Corpo a Corpo");
+    const arma = armaComMelhorias(String(d.dano ?? "").split("/")[0], Number(d.margem ?? 20), Number(d.multiplicador ?? 2), i.melhorias);
     const { error } = await supabase().from("presets_dados").insert({
       mesa_id: p.mesa_id,
       personagem_id: p.id,
       titulo: i.nome,
       tipo: "arma",
       atributo: corpoACorpo ? "FOR" : "AGI",
-      bonus: 0,
-      margem: Number(d.margem ?? 20),
-      multiplicador: Number(d.multiplicador ?? 2),
-      expressao: dano,
+      bonus: arma.ataque,
+      margem: arma.margem,
+      multiplicador: arma.multiplicador,
+      expressao: arma.dano,
     });
     if (error) return alert(error.message);
-    alert(`Preset "${i.nome}" criado na aba Dados. Ajuste o bônus da perícia (Luta ou Pontaria) lá.`);
+    alert(
+      `Preset "${i.nome}" criado na aba Dados${i.melhorias?.length ? ", já com as modificações e maldições" : ""}. Some lá o bônus da perícia (Luta ou Pontaria).`,
+    );
   }
 
   function conjurar(i: ItemPersonagem, c: EntradaCatalogo | undefined) {
@@ -124,7 +159,19 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
               {lista.map((i) => {
                 const c = i.catalogo_id ? porId.get(i.catalogo_id) : undefined;
                 const exp = aberto === i.id;
-                const curta = c ? linhaCurta(c) : [i.categoria && `cat. ${i.categoria}`, i.espacos && `${i.espacos} esp.`].filter(Boolean).join(", ");
+                const mel = i.melhorias ?? [];
+                const cat = categoriaFinal(i);
+                const curta = mel.length
+                  ? [cat.texto && `cat. ${cat.texto}`, i.espacos != null && `${i.espacos} esp.`, `${mel.length} ${mel.length === 1 ? "melhoria" : "melhorias"}`]
+                      .filter(Boolean)
+                      .join(", ")
+                  : c
+                    ? linhaCurta(c)
+                    : [i.categoria && `cat. ${i.categoria}`, i.espacos && `${i.espacos} esp.`].filter(Boolean).join(", ");
+                const arma =
+                  c?.tipo === "arma" && c.dados.dano && mel.length
+                    ? armaComMelhorias(String(c.dados.dano).split("/")[0], Number(c.dados.margem ?? 20), Number(c.dados.multiplicador ?? 2), mel)
+                    : null;
                 return (
                   <li key={i.id} className="py-2">
                     <div className="flex items-start gap-2">
@@ -152,6 +199,59 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                       <div className="mt-1.5 rounded-sm bg-pergaminho/60 p-2.5 text-[0.95rem]">
                         {(c?.resumo || i.resumo) && <p>{c?.resumo || i.resumo}</p>}
                         {c?.descricao && <p className="mt-1.5 whitespace-pre-wrap">{c.descricao}</p>}
+                        {aceitaMelhoria(i) && (
+                          <div className="mt-2 border-t border-ouro-escuro/20 pt-2">
+                            <p className="titulo text-sm text-marinho">Modificações e maldições</p>
+                            {mel.length > 0 ? (
+                              <ul className="mt-1 grid gap-1">
+                                {mel.map((m) => (
+                                  <li key={m.id} className="flex items-start gap-2">
+                                    <span className={`losango mt-1.5 ${m.tipo === "maldicao" ? "bg-pv" : "bg-ouro-escuro"}`} aria-hidden />
+                                    <span className="min-w-0 flex-1">
+                                      <b className="font-semibold text-marinho">{m.nome}</b>
+                                      {m.tipo === "maldicao" && m.elemento ? <span className="text-tinta-suave"> ({m.elemento})</span> : null}
+                                      <span className="block text-sm">{m.efeito}</span>
+                                    </span>
+                                    <button onClick={() => tirarMelhoria(i, m)} className="px-1 text-tinta-suave hover:text-pv" aria-label={`Tirar ${m.nome}`}>
+                                      ✕
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm italic text-tinta-suave">Nenhuma ainda.</p>
+                            )}
+                            {cat.soma > 0 && (
+                              <p className="mt-1 text-sm">
+                                Categoria{" "}
+                                <b className="numeros">{cat.texto ?? "?"}</b>
+                                {cat.base != null && (
+                                  <span className="text-tinta-suave">
+                                    {" "}(base {i.categoria}, +{cat.soma} pelas melhorias)
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                            {arma && (
+                              <p className="mt-0.5 text-sm">
+                                Com as melhorias:{" "}
+                                <span className="numeros">
+                                  dano {arma.dano}, crítico {arma.margem}/×{arma.multiplicador}
+                                  {arma.ataque ? `, ataque +${arma.ataque}` : ""}
+                                </span>
+                              </p>
+                            )}
+                            <button
+                              onClick={() => {
+                                setAlvo(i.id);
+                                setCatalogoAberto("melhorias");
+                              }}
+                              className="mt-1.5 rounded-sm border border-ouro-escuro/40 px-2.5 py-1 text-sm text-marinho"
+                            >
+                              + Modificação ou maldição
+                            </button>
+                          </div>
+                        )}
                         {c && (
                           <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
                             {detalhes(c).map(([k, v]) => (
@@ -167,7 +267,7 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                           <textarea
                             className="campo mt-0.5 min-h-14 w-full text-base"
                             defaultValue={i.nota}
-                            placeholder="Munição restante, quem deu, modificações…"
+                            placeholder="Munição restante, quem deu…"
                             onBlur={(e) => e.target.value !== i.nota && mudar(i, { nota: e.target.value })}
                           />
                         </label>
@@ -215,8 +315,46 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
           userId={userId}
           filtroInicial={catalogoAberto}
           onEscolher={adicionar}
-          onFechar={() => setCatalogoAberto(false)}
+          onFechar={() => {
+            setCatalogoAberto(false);
+            setAlvo(null);
+          }}
         />
+      )}
+
+      {semItem && (
+        <div role="dialog" aria-modal="true" aria-label={`Aplicar ${semItem.nome}`} className="fixed inset-0 z-50 grid place-items-end bg-black/50 sm:place-items-center">
+          <div className="folha-solida w-full max-w-md p-4">
+            <h2 className="titulo text-lg text-marinho">Aplicar {semItem.nome} em qual item?</h2>
+            <p className="text-sm text-tinta-suave">
+              {semItem.tipo === "maldicao" ? "Maldições" : "Modificações"} entram no item e aumentam a categoria dele.
+            </p>
+            <ul className="mt-2 max-h-72 divide-y divide-ouro-escuro/15 overflow-auto">
+              {itens.linhas.filter(aceitaMelhoria).map((i) => (
+                <li key={i.id}>
+                  <button
+                    className="w-full py-2 text-left"
+                    onClick={() => {
+                      const e = semItem;
+                      setSemItem(null);
+                      setCatalogoAberto(false);
+                      aplicar(i, e);
+                    }}
+                  >
+                    <span className="titulo text-marinho">{i.nome}</span>
+                    <span className="block text-sm italic text-tinta-suave">{TIPOS[i.tipo ?? ""]?.rotulo ?? "Item"}</span>
+                  </button>
+                </li>
+              ))}
+              {!itens.linhas.some(aceitaMelhoria) && (
+                <li className="py-2 italic text-tinta-suave">Adicione primeiro uma arma, proteção ou acessório ao inventário.</li>
+              )}
+            </ul>
+            <button className="mt-2 text-tinta-suave underline underline-offset-2" onClick={() => setSemItem(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

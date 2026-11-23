@@ -33,6 +33,17 @@ export interface ItemPersonagem {
   nota: string;
   equipado: boolean;
   ordem: number;
+  /** Modificações e maldições aplicadas a este item. */
+  melhorias?: Melhoria[];
+}
+
+export interface Melhoria {
+  id: string;
+  catalogo_id: string | null;
+  nome: string;
+  tipo: "modificacao" | "maldicao";
+  efeito: string;
+  elemento?: string | null;
 }
 
 export const TIPOS: Record<string, { rotulo: string; plural: string; secao: Secao }> = {
@@ -58,6 +69,7 @@ export const FILTROS: { id: string; rotulo: string; tipos: string[] }[] = [
   { id: "armas", rotulo: "Armas", tipos: ["arma", "municao"] },
   { id: "equip", rotulo: "Equipamento", tipos: ["protecao", "item", "modificacao"] },
   { id: "amald", rotulo: "Amaldiçoados", tipos: ["item_amaldicoado", "maldicao"] },
+  { id: "melhorias", rotulo: "Modificações e maldições", tipos: ["modificacao", "maldicao"] },
   { id: "rituais", rotulo: "Rituais", tipos: ["ritual"] },
   { id: "paranormal", rotulo: "Poderes paranormais", tipos: ["poder_paranormal"] },
   { id: "classe", rotulo: "Classes e trilhas", tipos: ["classe", "habilidade_classe", "poder_classe", "habilidade_trilha"] },
@@ -195,4 +207,64 @@ export function normalizar(s: string) {
 /** Capacidade de carga em espaços: 5 por ponto de Força (Força 0 = 2). */
 export function capacidadeCarga(forca: number, extra = 0) {
   return (forca > 0 ? forca * 5 : 2) + extra;
+}
+
+// ------------------------------------------------------------------ categoria e melhorias
+
+const ROMANOS = ["0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
+
+/** "II" → 2. Aceita também números. Desconhecido → null. */
+export function deRomano(c: string | number | null | undefined): number | null {
+  if (c == null || c === "") return null;
+  const t = String(c).trim().toUpperCase();
+  const i = ROMANOS.indexOf(t);
+  if (i >= 0) return i;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+export function romano(n: number) {
+  return ROMANOS[n] ?? String(n);
+}
+
+/**
+ * Categoria final do item: a base + I por modificação;
+ * a primeira maldição soma II e cada maldição seguinte soma I.
+ */
+export function categoriaFinal(i: Pick<ItemPersonagem, "categoria" | "melhorias">) {
+  const base = deRomano(i.categoria);
+  const mods = (i.melhorias ?? []).filter((m) => m.tipo === "modificacao").length;
+  const malds = (i.melhorias ?? []).filter((m) => m.tipo === "maldicao").length;
+  const soma = mods + (malds ? malds + 1 : 0);
+  if (base == null) return { base: null, final: null, soma, texto: soma ? `+${romano(soma)}` : null };
+  return { base, final: base + soma, soma, texto: romano(base + soma) };
+}
+
+/** Efeitos numéricos que as melhorias dão numa arma (para o preset de dados e o resumo). */
+export function efeitosArma(melhorias: Melhoria[] = []) {
+  const e = { ataque: 0, danoExtra: [] as string[], ameaca: 0, dobraMargem: false, multiplicador: 0, dadoExtra: 0 };
+  for (const m of melhorias) {
+    const n = normalizar(m.nome).replace(/\s*\(.*\)$/, "");
+    if (n === "certeira" || n === "alongada") e.ataque += 2;
+    else if (n === "cruel") e.danoExtra.push("2");
+    else if (n === "perigosa" || n === "mira laser") e.ameaca += 2;
+    else if (n === "dum dum") e.multiplicador += 1;
+    else if (n === "calibre grosso") e.dadoExtra += 1;
+    else if (n === "explosiva") e.danoExtra.push("2d6");
+    else if (n === "predadora") e.dobraMargem = true;
+    else if (n === "lancinante" || n === "erosiva") e.danoExtra.push("1d8");
+  }
+  return e;
+}
+
+/** Aplica os efeitos a margem, multiplicador e dano de uma arma. */
+export function armaComMelhorias(dano: string, margem: number, multiplicador: number, melhorias: Melhoria[] = []) {
+  const e = efeitosArma(melhorias);
+  // dobrar a margem vem antes dos aumentos (ex.: 19 → 17, depois −2)
+  let faixa = 21 - margem;
+  if (e.dobraMargem) faixa *= 2;
+  faixa += e.ameaca;
+  let expr = dano.trim();
+  if (e.dadoExtra) expr = expr.replace(/^(\d*)d(\d+)/i, (_, q, f) => `${(Number(q) || 1) + e.dadoExtra}d${f}`);
+  for (const x of e.danoExtra) expr += `+${x}`;
+  return { dano: expr, margem: Math.max(2, 21 - faixa), multiplicador: multiplicador + e.multiplicador, ataque: e.ataque };
 }

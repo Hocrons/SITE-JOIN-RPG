@@ -286,9 +286,16 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
     return s;
   }, [foco, listaArestas]);
 
+  // longe demais, só os pontos com mais ligações (e os do foco) mostram o nome, para não virar borrão
+  function mostrarRotulo(n: No) {
+    if (vizinhos?.has(n.id)) return true;
+    if (vista.k >= 0.7) return !vizinhos;
+    return !vizinhos && n.grau >= 4;
+  }
+
   const c = escuro
     ? { texto: "#e6dcc4", contorno: "#0e1a30", linha: "rgba(226,194,119,.32)", linhaForte: "#e2c277", fundoRotulo: "#0e1a30", sel: "#e2c277" }
-    : { texto: "#2a1f14", contorno: "#f3e8cc", linha: "rgba(126,97,24,.35)", linhaForte: "#7e6118", fundoRotulo: "#f3e8cc", sel: "#12284a" };
+    : { texto: "#1c1409", contorno: "#f3e8cc", linha: "rgba(126,97,24,.45)", linhaForte: "#7e6118", fundoRotulo: "#f6eed8", sel: "#12284a" };
 
   return (
     <div className="relative">
@@ -336,11 +343,14 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
                 y={y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize={11 / Math.sqrt(vista.k)}
+                fontSize={12.5 / vista.k}
                 fontStyle="italic"
+                fontFamily="var(--font-serifa)"
+                fontWeight={500}
                 fill={c.texto}
                 stroke={c.fundoRotulo}
-                strokeWidth={3 / Math.sqrt(vista.k)}
+                strokeWidth={2.5 / vista.k}
+                strokeLinejoin="round"
                 paintOrder="stroke"
                 pointerEvents="none"
               >
@@ -375,20 +385,24 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
                   strokeWidth={n.oculto ? 2 : 1.5}
                   strokeDasharray={n.oculto ? "3 2" : undefined}
                 />
-                <text
-                  y={r + 13}
-                  textAnchor="middle"
-                  fontSize={12.5}
-                  fontFamily="var(--font-serifa)"
-                  fontWeight={sel || n.id === sobre ? 700 : 500}
-                  fill={c.texto}
-                  stroke={c.fundoRotulo}
-                  strokeWidth={3.5}
-                  paintOrder="stroke"
-                  pointerEvents="none"
-                >
-                  {n.rotulo.length > 26 ? n.rotulo.slice(0, 25) + "…" : n.rotulo}
-                </text>
+                {mostrarRotulo(n) && (
+                  <text
+                    y={r + 4 + 14 / vista.k}
+                    textAnchor="middle"
+                    fontSize={14 / vista.k}
+                    fontFamily="var(--font-serifa)"
+                    fontWeight={sel || n.id === sobre ? 700 : 600}
+                    fill={c.texto}
+                    stroke={c.fundoRotulo}
+                    strokeWidth={2.5 / vista.k}
+                    strokeLinejoin="round"
+                    paintOrder="stroke"
+                    pointerEvents="none"
+                    style={{ textRendering: "geometricPrecision" }}
+                  >
+                    {n.rotulo.length > 24 ? n.rotulo.slice(0, 23) + "…" : n.rotulo}
+                  </text>
+                )}
               </g>
             );
           })}
