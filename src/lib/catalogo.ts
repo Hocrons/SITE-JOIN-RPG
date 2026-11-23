@@ -48,6 +48,8 @@ export const TIPOS: Record<string, { rotulo: string; plural: string; secao: Seca
   poder_classe: { rotulo: "Poder de classe", plural: "Poderes de classe", secao: "habilidades" },
   habilidade_trilha: { rotulo: "Habilidade de trilha", plural: "Trilhas", secao: "habilidades" },
   habilidade_classe: { rotulo: "Habilidade de classe", plural: "Habilidades de classe", secao: "habilidades" },
+  poder_geral: { rotulo: "Poder geral", plural: "Poderes gerais", secao: "habilidades" },
+  uso_pericia: { rotulo: "Uso de perícia", plural: "Usos de perícia", secao: "habilidades" },
   origem: { rotulo: "Origem", plural: "Origens", secao: "habilidades" },
   classe: { rotulo: "Classe", plural: "Classes", secao: "habilidades" },
 };
@@ -59,7 +61,8 @@ export const FILTROS: { id: string; rotulo: string; tipos: string[] }[] = [
   { id: "rituais", rotulo: "Rituais", tipos: ["ritual"] },
   { id: "paranormal", rotulo: "Poderes paranormais", tipos: ["poder_paranormal"] },
   { id: "classe", rotulo: "Classes e trilhas", tipos: ["classe", "habilidade_classe", "poder_classe", "habilidade_trilha"] },
-  { id: "origem", rotulo: "Origens", tipos: ["origem"] },
+  { id: "gerais", rotulo: "Poderes gerais", tipos: ["poder_geral"] },
+  { id: "origem", rotulo: "Origens e perícias", tipos: ["origem", "uso_pericia"] },
 ];
 
 /** Linhas de detalhe para mostrar, conforme o tipo. */
@@ -83,6 +86,12 @@ export function detalhes(e: Pick<EntradaCatalogo, "tipo" | "dados">): [string, s
       break;
     case "poder_classe":
       lista.push(par("Classe", d.classe), par("Pré-requisito", d.prerequisitos));
+      break;
+    case "poder_geral":
+      lista.push(par("Pré-requisito", d.prerequisitos));
+      break;
+    case "uso_pericia":
+      lista.push(par("Perícia", d.subtipo));
       break;
     case "habilidade_trilha":
       lista.push(par("Trilha", d.trilha ? `${d.trilha} (${d.classe})` : null), par("NEX", d.nex ? `${d.nex}%` : null));
@@ -113,6 +122,8 @@ export function linhaCurta(e: Pick<EntradaCatalogo, "tipo" | "dados">): string {
   else if (e.tipo === "poder_classe" || e.tipo === "habilidade_classe") partes.push(String(d.classe ?? ""));
   else if (e.tipo === "poder_paranormal" || e.tipo === "maldicao") partes.push(String(d.elemento ?? ""));
   else if (e.tipo === "origem") partes.push(String(d.pericias ?? ""));
+  else if (e.tipo === "uso_pericia") partes.push(String(d.subtipo ?? ""));
+  else if (e.tipo === "poder_geral") partes.push(d.prerequisitos ? `requer ${d.prerequisitos}` : null);
   else partes.push(d.categoria != null ? `cat. ${d.categoria}` : null, d.espacos != null ? `${d.espacos} esp.` : null);
   return partes.filter(Boolean).join(", ");
 }

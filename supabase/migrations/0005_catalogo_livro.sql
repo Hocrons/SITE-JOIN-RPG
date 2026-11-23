@@ -1,7 +1,7 @@
 -- =====================================================================
 --  CATÁLOGO BASE — Livro de Regras de Ordem Paranormal
---  Dados de regra + resumos escritos para este site (não é o texto do livro).
---  Gerado por supabase/catalogo/gerar_sql.py. Pode rodar de novo: substitui o catálogo base.
+--  Dados de regra + resumos escritos para este site (não é o texto dos livros).
+--  Gerado por supabase/catalogo/gerar_sql.py. Pode rodar de novo: substitui estas entradas.
 -- =====================================================================
 delete from public.catalogo where mesa_id is null and fonte like 'Livro de Regras%';
 

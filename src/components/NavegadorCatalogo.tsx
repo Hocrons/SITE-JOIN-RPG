@@ -33,7 +33,7 @@ export function NavegadorCatalogo({ mesaId, userId, filtroInicial, onEscolher, o
     const termo = normalizar(busca.trim());
     return todos
       .filter((e) => !tiposFiltro || tiposFiltro.includes(e.tipo))
-      .filter((e) => !elemento || String(e.dados.elemento ?? "") === elemento)
+      .filter((e) => !elemento || String(e.dados.elemento ?? "").includes(elemento))
       .filter((e) => {
         if (!termo) return true;
         const alvo = normalizar(`${e.nome} ${e.resumo} ${linhaCurta(e)}`);

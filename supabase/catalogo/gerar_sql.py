@@ -9,7 +9,7 @@ import json, os, sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
-import amaldicoados, classes, equipamento, origens, poderes_paranormais, rituais  # noqa: E402
+import amaldicoados, arquivos_secretos, classes, equipamento, origens, poderes_paranormais, rituais  # noqa: E402
 
 CAMPOS_TOPO = {"tipo", "nome", "resumo", "fonte"}
 
@@ -28,9 +28,7 @@ def q(s):
     return "null" if s is None else "'" + str(s).replace("'", "''") + "'"
 
 
-def main():
-    todos = (armas() + equipamento.TODOS + poderes_paranormais.TODOS + rituais.TODOS
-             + amaldicoados.TODOS + origens.TODOS + classes.TODOS)
+def escrever(nome, titulo, prefixo_fonte, todos):
     linhas = []
     for x in todos:
         dados = {k: v for k, v in x.items() if k not in CAMPOS_TOPO and v is not None}
@@ -38,14 +36,14 @@ def main():
             f"({q(x['tipo'])}, {q(x['nome'])}, {q(json.dumps(dados, ensure_ascii=False))}::jsonb, "
             f"{q(x.get('resumo') or '')}, {q(x.get('fonte'))})"
         )
-    destino = os.path.join(AQUI, "..", "migrations", "0005_catalogo_livro.sql")
+    destino = os.path.join(AQUI, "..", "migrations", nome)
     with open(destino, "w", encoding="utf-8") as f:
         f.write("-- =====================================================================\n")
-        f.write("--  CATÁLOGO BASE — Livro de Regras de Ordem Paranormal\n")
-        f.write("--  Dados de regra + resumos escritos para este site (não é o texto do livro).\n")
-        f.write("--  Gerado por supabase/catalogo/gerar_sql.py. Pode rodar de novo: substitui o catálogo base.\n")
+        f.write(f"--  CATÁLOGO BASE — {titulo}\n")
+        f.write("--  Dados de regra + resumos escritos para este site (não é o texto dos livros).\n")
+        f.write("--  Gerado por supabase/catalogo/gerar_sql.py. Pode rodar de novo: substitui estas entradas.\n")
         f.write("-- =====================================================================\n")
-        f.write("delete from public.catalogo where mesa_id is null and fonte like 'Livro de Regras%';\n\n")
+        f.write(f"delete from public.catalogo where mesa_id is null and fonte like '{prefixo_fonte}%';\n\n")
         f.write("insert into public.catalogo (tipo, nome, dados, resumo, fonte) values\n")
         f.write(",\n".join(linhas))
         f.write(";\n")
@@ -55,6 +53,13 @@ def main():
     print(f"{len(todos)} entradas →", os.path.relpath(destino))
     for k, v in sorted(contagem.items()):
         print(f"  {k}: {v}")
+
+
+def main():
+    livro = (armas() + equipamento.TODOS + poderes_paranormais.TODOS + rituais.TODOS
+             + amaldicoados.TODOS + origens.TODOS + classes.TODOS)
+    escrever("0005_catalogo_livro.sql", "Livro de Regras de Ordem Paranormal", "Livro de Regras", livro)
+    escrever("0006_catalogo_arquivos_secretos.sql", "Arquivos Secretos 1 a 9", "Arquivos Secretos", arquivos_secretos.TODOS)
 
 
 if __name__ == "__main__":
