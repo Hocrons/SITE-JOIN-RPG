@@ -26,6 +26,7 @@ src/
 - **Acesso sem e-mail:** o navegador faz login anônimo no Supabase; a função `entrar_mesa(código, PIN, personagem)` confere o PIN (bcrypt) e liga aquela sessão ao personagem ou ao papel de mestre. Depois de 8 PINs errados em 15 min, o alvo é bloqueado temporariamente.
 - **RLS em todas as tabelas:** jogador só altera o próprio personagem; detalhes da ficha, anotações e inventário só para dono e mestre; NPCs/ameaças, log e notas secretas só para o mestre.
 - **Âncora:** um gatilho aplica o teto da ficha ativa em *toda* alteração. Ligar corta PV/SAN/PE no máximo da ficha 50%; desligar mantém os valores. A Marca do Império só afeta quem tem `tem_marca`.
+- **PV temporário:** campo `pv_temp`, que fica acima do máximo, aparece em dourado listrado e é gasto primeiro quando o personagem leva dano. A Âncora não corta o PV temporário.
 - **Log e desfazer:** toda mudança de PV/SAN/PE/PD, condições e Âncora vai para `log_alteracoes`; `desfazer_ultima` reverte o último lote (um clique na Âncora global desfaz tudo de uma vez).
 - **Dados no servidor:** `rolar()` sorteia no banco, então o feed é confiável. Rolagens secretas só aparecem para o autor e o mestre.
 - **Lore:** entradas e conexões "só o mestre" nunca saem do banco para jogadores (nem pelo tempo real). Revelar a alguém dispara um evento para aquela pessoa.

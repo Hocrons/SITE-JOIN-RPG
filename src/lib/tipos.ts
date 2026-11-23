@@ -36,6 +36,7 @@ export interface Personagem {
   san_atual: number;
   pe_atual: number;
   pd_atual: number | null;
+  pv_temp: number;
   condicoes: string[];
   arquivado: boolean;
   atualizado_em: string;
@@ -109,4 +110,4 @@ export interface Rolagem {
   criado_em: string;
 }
 
-export type CampoStatus = "pv_atual" | "san_atual" | "pe_atual" | "pd_atual";
+export type CampoStatus = "pv_atual" | "san_atual" | "pe_atual" | "pd_atual" | "pv_temp";

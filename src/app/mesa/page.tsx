@@ -47,7 +47,15 @@ export default function SalaAoVivo() {
   async function ajustar(p: Personagem, campo: CampoStatus, delta: number) {
     // Otimista: mostra já; o evento do servidor confirma (com o teto aplicado).
     personagens.setLinhas((l) =>
-      l.map((x) => (x.id === p.id ? { ...x, [campo]: Math.max(0, (x[campo] ?? 0) + delta) } : x)),
+      l.map((x) => {
+        if (x.id !== p.id) return x;
+        if (campo === "pv_atual" && delta < 0 && x.pv_temp > 0) {
+          // dano consome primeiro o PV temporário (igual ao servidor)
+          const sobra = x.pv_temp + delta;
+          return { ...x, pv_temp: Math.max(0, sobra), pv_atual: Math.max(0, x.pv_atual + Math.min(0, sobra)) };
+        }
+        return { ...x, [campo]: Math.max(0, (x[campo] ?? 0) + delta) };
+      }),
     );
     const { error } = await supabase().rpc("ajustar_status", { p_personagem: p.id, p_campo: campo, p_delta: delta });
     if (error) {
@@ -113,7 +121,7 @@ export default function SalaAoVivo() {
           </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {personagens.linhas.map((p) => {
             const f = fichaAtiva(p, fichas.linhas);
             const meu = membro.personagem_id === p.id;
@@ -154,6 +162,8 @@ export default function SalaAoVivo() {
                       compacto={!editavel}
                       onDelta={(d) => ajustar(p, campo, d)}
                       onDefinir={(v) => definir(p, campo, v)}
+                      temp={campo === "pv_atual" ? p.pv_temp ?? 0 : undefined}
+                      onDefinirTemp={campo === "pv_atual" ? (v) => definir(p, "pv_temp", v) : undefined}
                     />
                   ))}
                 </div>

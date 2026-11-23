@@ -118,3 +118,26 @@ body {
 .alerta-pulsando {
   animation: pulsar-alerta 1.6s ease-in-out infinite;
 }
+
+/* PV temporário: dourado listrado, acima do máximo */
+.trilha-temp {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-ouro-claro) 0 6px,
+    var(--color-ouro) 6px 12px
+  );
+  box-shadow: 0 0 8px rgba(230, 200, 110, 0.9);
+}
+.selo-temp {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  color: var(--color-marinho);
+  background: linear-gradient(180deg, var(--color-ouro-claro), var(--color-ouro));
+  border: 1px solid var(--color-ouro-escuro);
+}
+.escudo-temp {
+  outline: 1px dashed var(--color-ouro);
+  background: rgba(230, 200, 110, 0.08);
+}

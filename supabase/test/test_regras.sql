@@ -90,3 +90,16 @@ select set_config('request.jwt.claim.sub', :DIEGO, false);
 select nome, pv_atual from participantes_publico;       -- pv nulo
 select count(*) as participantes_reais_diego from participantes;  -- 0
 reset role;
+
+\echo '== 8. PV temporário: acima do máximo, dano consome primeiro, Âncora não corta'
+set role authenticated;
+select set_config('request.jwt.claim.sub', :DIEGO, false);
+update personagens set pv_atual = 113 where id = :'diego';
+select (ajustar_status(:'diego', 'pv_temp', 15)).pv_temp as temp_15;
+select pv_atual, pv_temp from ajustar_status(:'diego', 'pv_atual', -10);   -- esperado 113 / 5
+select pv_atual, pv_temp from ajustar_status(:'diego', 'pv_atual', -8);    -- esperado 110 / 0
+select (ajustar_status(:'diego', 'pv_temp', 20)).pv_temp as temp_20;
+select set_config('request.jwt.claim.sub', :MESTRE, false);
+select ancora_definir(:'mesa', true, array[:'diego']::uuid[], 'marca');
+select pv_atual, pv_temp from personagens where id = :'diego';               -- esperado 73 / 20
+reset role;

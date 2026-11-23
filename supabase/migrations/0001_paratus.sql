@@ -40,6 +40,7 @@ create table public.personagens (
   san_atual        int  not null default 0,
   pe_atual         int  not null default 0,
   pd_atual         int,
+  pv_temp          int  not null default 0,  -- PV temporário: fica ACIMA do máximo, não é cortado pela Âncora
   condicoes        text[] not null default '{}',
   arquivado        boolean not null default false,
   criado_em        timestamptz not null default now(),
@@ -473,6 +474,7 @@ begin
     end if;
   end if;
   new.pv_atual  := greatest(new.pv_atual, 0);
+  new.pv_temp   := greatest(new.pv_temp, 0);
   new.san_atual := greatest(new.san_atual, 0);
   new.pe_atual  := greatest(new.pe_atual, 0);
   if new.pd_atual is not null then new.pd_atual := greatest(new.pd_atual, 0); end if;
@@ -486,7 +488,7 @@ create trigger personagens_antes before update on public.personagens
 create or replace function public.tg_personagens_log() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
-  campos text[] := array['pv_atual','san_atual','pe_atual','pd_atual','condicoes','ancora_ativa'];
+  campos text[] := array['pv_atual','pv_temp','san_atual','pe_atual','pd_atual','condicoes','ancora_ativa'];
   c text;
   o jsonb := to_jsonb(old);
   n jsonb := to_jsonb(new);
@@ -693,11 +695,20 @@ language plpgsql security invoker set search_path = public as $$
 declare
   r personagens;
 begin
-  if p_campo not in ('pv_atual','san_atual','pe_atual','pd_atual') then
+  if p_campo not in ('pv_atual','san_atual','pe_atual','pd_atual','pv_temp') then
     raise exception 'Campo inválido.';
   end if;
-  execute format('update personagens set %1$I = coalesce(%1$I, 0) + $1 where id = $2 returning *', p_campo)
-    into r using p_delta, p_personagem;
+  if p_campo = 'pv_atual' and p_delta < 0 then
+    -- Dano consome primeiro o PV temporário; o que sobrar sai do PV normal.
+    update personagens
+       set pv_temp  = greatest(pv_temp + p_delta, 0),
+           pv_atual = pv_atual + least(pv_temp + p_delta, 0)
+     where id = p_personagem
+    returning * into r;
+  else
+    execute format('update personagens set %1$I = coalesce(%1$I, 0) + $1 where id = $2 returning *', p_campo)
+      into r using p_delta, p_personagem;
+  end if;
   if r.id is null then raise exception 'Sem permissão para alterar este personagem.' using errcode = '42501'; end if;
   return r;
 end $$;
