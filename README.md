@@ -29,7 +29,7 @@ src/
 - **PV temporário:** campo `pv_temp`, que fica acima do máximo, aparece em dourado listrado e é gasto primeiro quando o personagem leva dano. A Âncora não corta o PV temporário.
 - **Log e desfazer:** toda mudança de PV/SAN/PE/PD, condições e Âncora vai para `log_alteracoes`; `desfazer_ultima` reverte o último lote (um clique na Âncora global desfaz tudo de uma vez).
 - **Dados no servidor:** `rolar()` sorteia no banco, então o feed é confiável. Rolagens secretas só aparecem para o autor e o mestre.
-- **Lore:** entradas e conexões "só o mestre" nunca saem do banco para jogadores (nem pelo tempo real). Revelar a alguém dispara um evento para aquela pessoa.
+- **Lore:** entradas e conexões "só o mestre" nunca saem do banco para jogadores (nem pelo tempo real). Revelar ou esconder avisa os jogadores na hora (broadcast), e eles recarregam o que podem ver. A lore inicial vem de `supabase/lore/paratus.py` (gerada para `0008_codice.sql`): tudo "só o mestre", exceto Cidadãos e o resumo da Temporada 1.
 
 ## Configuração (passo a passo)
 
@@ -38,6 +38,7 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
+5. Rode, em ordem, cada arquivo de `supabase/migrations/` a partir do `0002` (um por query).
 5. Depois, a cada etapa nova, rode os arquivos novos de `supabase/migrations/` em ordem (`0002_...`, `0003_...`), um por query.
 6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
@@ -87,7 +88,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 4. Catálogo (Livro de Regras) + itens, habilidades e rituais na ficha
 - [x] 4b. Catálogo: Arquivos Secretos 1–7 e 9
 - [x] 5. Combate/iniciativa
-- [ ] 6. Códice da Lore (mestre) com grafo e visibilidade
+- [x] 6. Códice da Lore com grafo, visibilidade por entrada e conexão, e a lore inicial do Notion
 - [ ] 7. Lore pessoal do jogador (estilo Obsidian)
 - [ ] 8. Quadro de investigação
 - [ ] 9. Linha do tempo

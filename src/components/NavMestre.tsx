@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/mestre", rotulo: "Escudo" },
   { href: "/mestre/combate", rotulo: "Combate" },
+  { href: "/mestre/lore", rotulo: "Códice" },
 ];
 
 /** Abas da Área do Mestre. */

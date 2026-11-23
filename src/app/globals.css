@@ -302,3 +302,68 @@ body {
   width: 100%;
   min-width: 0;
 }
+
+/* ---------- Códice: texto da lore ---------- */
+.texto-lore {
+  line-height: 1.6;
+  max-width: 68ch;
+}
+.texto-lore > * + * {
+  margin-top: 0.7em;
+}
+.texto-lore h1,
+.texto-lore h2,
+.texto-lore h3 {
+  font-family: var(--font-titulo);
+  letter-spacing: 0.03em;
+  color: var(--color-marinho);
+  margin-top: 1.2em;
+}
+.texto-lore h1 { font-size: 1.35rem; }
+.texto-lore h2 { font-size: 1.2rem; }
+.texto-lore h3 { font-size: 1.08rem; }
+.texto-lore ul { list-style: disc; padding-left: 1.3em; }
+.texto-lore ol { list-style: decimal; padding-left: 1.4em; }
+.texto-lore li + li { margin-top: 0.3em; }
+.texto-lore li::marker { color: var(--color-ouro-escuro); }
+.texto-lore strong { font-weight: 600; color: var(--color-marinho); }
+.texto-lore blockquote {
+  border-left: 2px solid var(--color-ouro);
+  padding-left: 0.9em;
+  font-style: italic;
+  color: var(--color-tinta-suave);
+}
+.texto-lore table { border-collapse: collapse; font-size: 0.95em; }
+.texto-lore th,
+.texto-lore td {
+  border-bottom: 1px solid color-mix(in oklab, var(--color-ouro-escuro) 30%, transparent);
+  padding: 0.3em 0.7em 0.3em 0;
+  text-align: left;
+  vertical-align: top;
+}
+.texto-lore th { font-family: var(--font-titulo); font-weight: 400; color: var(--color-tinta-suave); }
+.texto-lore a,
+.texto-lore .link-lore {
+  color: var(--color-marinho-claro);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-ouro) 70%, transparent);
+  text-underline-offset: 3px;
+}
+.texto-lore-escuro h1,
+.texto-lore-escuro h2,
+.texto-lore-escuro h3,
+.texto-lore-escuro strong { color: var(--color-ouro-claro); }
+.texto-lore-escuro li::marker { color: var(--color-ouro); }
+.texto-lore-escuro blockquote { color: color-mix(in oklab, var(--color-nevoa) 70%, transparent); }
+.texto-lore-escuro th { color: color-mix(in oklab, var(--color-nevoa) 60%, transparent); }
+.texto-lore-escuro a,
+.texto-lore-escuro .link-lore { color: #a9c1ee; }
+
+/* Marcador de tipo da lore (losango colorido) */
+.losango {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}

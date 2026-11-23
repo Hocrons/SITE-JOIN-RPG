@@ -18,10 +18,12 @@ create table if not exists public.personagens_publico (
 create or replace function public.tg_personagem_publico() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
-  pid uuid := coalesce(new.id, old.id);
+  pid uuid;
 begin
   if tg_table_name = 'fichas' then
     pid := new.personagem_id;
+  else
+    pid := new.id;
   end if;
   insert into personagens_publico (id, mesa_id, tipo, nome, jogador, nex, ordem, arquivado)
   select p.id, p.mesa_id, p.tipo, p.nome, p.jogador,

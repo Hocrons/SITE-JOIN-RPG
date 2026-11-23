@@ -67,3 +67,10 @@ begin
 end $$;
 
 -- Lore e linha do tempo: adicionados nas etapas 5 e 6 (seed_lore.sql).
+
+-- Lore inicial do Códice (função criada na migração 0008; ignore se ainda não rodou a 0008)
+do $$ begin
+  if to_regproc('public.semear_lore_paratus') is not null then
+    perform public.semear_lore_paratus(id) from public.mesas where codigo = 'PARATUS';
+  end if;
+end $$;
