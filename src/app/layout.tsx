@@ -15,11 +15,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#12284a",
+  // o site tem as próprias cores (pergaminho e área do mestre escura):
+  // impede o "modo escuro forçado" do Chrome/Samsung de inverter tudo
+  colorScheme: "only light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" style={{ colorScheme: "only light" }}>
       <body className="antialiased">
         <SessaoProvider>{children}</SessaoProvider>
       </body>

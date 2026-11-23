@@ -391,10 +391,11 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
                     textAnchor="middle"
                     fontSize={14 / vista.k}
                     fontFamily="var(--font-serifa)"
-                    fontWeight={sel || n.id === sobre ? 700 : 600}
+                    fontWeight={600}
                     fill={c.texto}
                     stroke={c.fundoRotulo}
-                    strokeWidth={2.5 / vista.k}
+                    strokeWidth={2 / vista.k}
+                    strokeOpacity={0.85}
                     strokeLinejoin="round"
                     paintOrder="stroke"
                     pointerEvents="none"
