@@ -26,9 +26,9 @@ export default function NovaMesa() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center px-5 py-10">
-      <Brasao tamanho={64} />
-      <h1 className="titulo mt-3 text-2xl text-marinho">Nova mesa</h1>
-      <form onSubmit={enviar} className="moldura mt-6 grid w-full gap-4 p-5">
+      <Brasao tamanho={72} louros />
+      <h1 className="titulo mt-3 text-3xl text-marinho">Nova mesa</h1>
+      <form onSubmit={enviar} className="folha mt-6 grid w-full gap-4 p-5">
         <label className="grid gap-1 text-sm">
           Nome da campanha
           <input className="campo" value={nome} onChange={(e) => setNome(e.target.value)} required />
@@ -49,12 +49,12 @@ export default function NovaMesa() {
           <input className="campo" type="password" value={pin} onChange={(e) => setPin(e.target.value)} minLength={4} required />
         </label>
         <button className="botao-ouro py-3" disabled={ocupado}>
-          {ocupado ? "CRIANDO…" : "CRIAR MESA"}
+          {ocupado ? "Criando a mesa…" : "Criar mesa"}
         </button>
         {erro && <p className="rounded bg-pv/10 p-2 text-sm text-pv">{erro}</p>}
       </form>
       <Link href="/" className="mt-6 text-sm underline">
-        ← voltar
+        Voltar à entrada
       </Link>
     </main>
   );

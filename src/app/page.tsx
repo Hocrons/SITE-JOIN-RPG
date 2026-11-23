@@ -17,12 +17,15 @@ export default function Entrada() {
   const router = useRouter();
   const { carregando, erro: erroSessao, membro, mesa, minhasMesas, entrar, trocarMesa } = useSessao();
 
+  const [outraMesa, setOutraMesa] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [mesaEncontrada, setMesaEncontrada] = useState<{ id: string; nome: string; personagens: OpcaoPersonagem[] } | null>(null);
   const [escolha, setEscolha] = useState<OpcaoPersonagem | "mestre" | null>(null);
   const [pin, setPin] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+
+  const jaNaMesa = !!(membro && mesa) && !outraMesa && !mesaEncontrada;
 
   async function buscarMesa(e: React.FormEvent) {
     e.preventDefault();
@@ -33,12 +36,12 @@ export default function Entrada() {
       if (error) throw error;
       const linha = (data as { mesa_id: string; nome: string; personagens: OpcaoPersonagem[] }[])?.[0];
       if (!linha) {
-        setErro("Nenhuma mesa com esse código.");
+        setErro("Nenhuma mesa com esse código. Confira com o mestre.");
         return;
       }
       setMesaEncontrada({ id: linha.mesa_id, nome: linha.nome, personagens: linha.personagens });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Erro ao buscar a mesa.");
+      setErro(e instanceof Error ? e.message : "Não foi possível buscar a mesa.");
     } finally {
       setOcupado(false);
     }
@@ -60,118 +63,141 @@ export default function Entrada() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center px-5 py-10">
-      <Brasao tamanho={92} />
-      <h1 className="titulo mt-4 text-center text-3xl font-bold text-marinho">PARATUS</h1>
-      <p className="serifa mt-1 text-center text-lg italic text-tinta-suave">
-        onde a membrana da realidade é fina
-      </p>
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center px-6 pb-8 pt-12">
+      <Brasao tamanho={150} louros className="surgir drop-shadow-[0_6px_10px_rgba(60,38,12,0.35)]" />
+      <h1 className="titulo mt-5 text-center text-[2.75rem] leading-none tracking-[0.18em] text-marinho">PARATUS</h1>
+      <div className="meandro mt-4 w-40" aria-hidden />
+      <p className="mt-3 text-center text-lg italic text-tinta-suave">onde a membrana da realidade é fina</p>
 
-      {carregando && <p className="mt-10 text-tinta-suave">Abrindo os portões…</p>}
-      {erroSessao && <p className="mt-6 rounded bg-pv/10 p-3 text-sm text-pv">{erroSessao}</p>}
+      <div className="mt-8 w-full">
+        {carregando && <p className="text-center italic text-tinta-suave">Abrindo os portões…</p>}
+        {erroSessao && <p className="rounded-sm border border-pv/40 bg-pv/10 p-3 text-pv">{erroSessao}</p>}
 
-      {!carregando && membro && mesa && !mesaEncontrada && (
-        <div className="moldura mt-8 w-full p-5 text-center">
-          <p className="text-sm text-tinta-suave">Você está na mesa</p>
-          <p className="titulo text-xl text-marinho">{mesa.nome}</p>
-          <p className="serifa text-lg">como {membro.nome_exibicao}</p>
-          <button className="botao-ouro mt-4 w-full py-3" onClick={() => router.push("/mesa")}>
-            CONTINUAR
-          </button>
-          {minhasMesas.length > 1 && (
-            <div className="mt-4 text-left text-sm">
-              <p className="mb-1 text-tinta-suave">Outras mesas:</p>
-              {minhasMesas
-                .filter((m) => m.mesa_id !== mesa.id)
-                .map((m) => (
-                  <button key={m.mesa_id} className="block underline" onClick={() => trocarMesa(m.mesa_id)}>
-                    {m.nome_exibicao} — trocar
-                  </button>
-                ))}
-            </div>
-          )}
-          <p className="mt-4 text-xs text-tinta-suave">Ou entre em outra mesa / personagem abaixo.</p>
-        </div>
-      )}
-
-      {!carregando && !mesaEncontrada && (
-        <form onSubmit={buscarMesa} className="moldura mt-6 w-full p-5">
-          <label className="titulo mb-2 block text-sm text-marinho">CÓDIGO DA MESA</label>
-          <input
-            className="campo w-full text-center text-xl uppercase tracking-[0.3em]"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-            placeholder="PARATUS"
-            autoCapitalize="characters"
-            autoComplete="off"
-          />
-          <button className="botao-ouro mt-4 w-full py-3" disabled={!codigo || ocupado}>
-            {ocupado ? "BUSCANDO…" : "ENTRAR"}
-          </button>
-        </form>
-      )}
-
-      {mesaEncontrada && !escolha && (
-        <section className="mt-6 w-full">
-          <h2 className="titulo mb-3 text-center text-lg text-marinho">{mesaEncontrada.nome}</h2>
-          <p className="serifa mb-4 text-center text-lg">Quem é você?</p>
-          <div className="grid gap-3">
-            {mesaEncontrada.personagens.map((p) => (
-              <button
-                key={p.id}
-                className="moldura flex items-center justify-between px-4 py-3 text-left transition hover:-translate-y-0.5"
-                onClick={() => setEscolha(p)}
-              >
-                <span className="titulo text-lg text-marinho">{p.nome}</span>
-                <span className="text-sm text-tinta-suave">{p.jogador}</span>
-              </button>
-            ))}
-            <button
-              className="mt-2 rounded-md border border-ouro-escuro bg-marinho px-4 py-3 text-left text-ouro-claro"
-              onClick={() => setEscolha("mestre")}
-            >
-              <span className="titulo">Sou o Mestre</span>
+        {/* Já está numa mesa */}
+        {!carregando && jaNaMesa && (
+          <div className="text-center">
+            <p className="text-tinta-suave">
+              Você está em <span className="titulo text-marinho">{mesa!.nome}</span> como{" "}
+              <span className="titulo text-marinho">{membro!.nome_exibicao}</span>.
+            </p>
+            <button className="botao-ouro mt-4 w-full py-3" onClick={() => router.push("/mesa")}>
+              Voltar à mesa
+            </button>
+            {minhasMesas
+              .filter((m) => m.mesa_id !== mesa!.id)
+              .map((m) => (
+                <button key={m.mesa_id} className="mt-3 block w-full text-tinta-suave underline" onClick={() => trocarMesa(m.mesa_id)}>
+                  Ir para a mesa de {m.nome_exibicao}
+                </button>
+              ))}
+            <button className="mt-3 text-tinta-suave underline underline-offset-2" onClick={() => setOutraMesa(true)}>
+              Entrar com outro código ou personagem
             </button>
           </div>
-          <button className="mt-4 w-full text-sm underline" onClick={() => setMesaEncontrada(null)}>
-            ← outro código
-          </button>
-        </section>
-      )}
+        )}
 
-      {mesaEncontrada && escolha && (
-        <form onSubmit={confirmarPin} className="moldura mt-6 w-full p-5 text-center">
-          <p className="text-sm text-tinta-suave">PIN de</p>
-          <p className="titulo mb-4 text-xl text-marinho">{escolha === "mestre" ? "Mestre" : escolha.nome}</p>
-          <input
-            className="campo w-full text-center text-2xl tracking-[0.5em]"
-            type="password"
-            inputMode="numeric"
-            autoFocus
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-          />
-          <button className="botao-ouro mt-4 w-full py-3" disabled={pin.length < 4 || ocupado}>
-            {ocupado ? "VERIFICANDO…" : "CONFIRMAR"}
-          </button>
-          <button
-            type="button"
-            className="mt-3 text-sm underline"
-            onClick={() => {
-              setEscolha(null);
-              setPin("");
-              setErro(null);
-            }}
-          >
-            ← voltar
-          </button>
-        </form>
-      )}
+        {/* 1. Código */}
+        {!carregando && !jaNaMesa && !mesaEncontrada && (
+          <form onSubmit={buscarMesa}>
+            <label htmlFor="codigo" className="titulo mb-2 block text-center text-marinho">
+              Código da mesa
+            </label>
+            <input
+              id="codigo"
+              className="campo numeros w-full text-center text-2xl uppercase tracking-[0.3em]"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value.toUpperCase().replace(/\s/g, ""))}
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button className="botao-ouro mt-3 w-full py-3" disabled={!codigo || ocupado}>
+              {ocupado ? "Procurando a mesa…" : "Procurar mesa"}
+            </button>
+          </form>
+        )}
 
-      {erro && <p className="mt-4 w-full rounded bg-pv/10 p-3 text-center text-sm text-pv">{erro}</p>}
+        {/* 2. Quem é você */}
+        {mesaEncontrada && !escolha && (
+          <section>
+            <p className="mb-3 text-center text-lg">
+              <span className="titulo text-marinho">{mesaEncontrada.nome}</span>
+              <span className="italic text-tinta-suave">. Quem é você?</span>
+            </p>
+            <ul className="folha divide-y divide-ouro-escuro/20">
+              {mesaEncontrada.personagens.map((p) => (
+                <li key={p.id}>
+                  <button
+                    className="flex w-full items-baseline justify-between gap-3 px-4 py-3 text-left hover:bg-ouro-claro/20"
+                    onClick={() => setEscolha(p)}
+                  >
+                    <span className="titulo text-lg text-marinho">{p.nome}</span>
+                    <span className="truncate italic text-tinta-suave">{p.jogador}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              className="titulo mt-3 w-full rounded-sm border border-ouro-escuro bg-marinho px-4 py-3 text-ouro-claro hover:bg-marinho-medio"
+              onClick={() => setEscolha("mestre")}
+            >
+              Sou o mestre
+            </button>
+            <button
+              className="mt-4 w-full text-tinta-suave underline underline-offset-2"
+              onClick={() => {
+                setMesaEncontrada(null);
+                setErro(null);
+              }}
+            >
+              Usar outro código
+            </button>
+          </section>
+        )}
 
-      <Link href="/nova-mesa" className="mt-auto pt-10 text-sm text-tinta-suave underline">
-        Criar uma nova mesa (outra campanha)
+        {/* 3. PIN */}
+        {mesaEncontrada && escolha && (
+          <form onSubmit={confirmarPin} className="text-center">
+            <label htmlFor="pin" className="block">
+              <span className="italic text-tinta-suave">PIN de </span>
+              <span className="titulo text-xl text-marinho">{escolha === "mestre" ? "Mestre" : escolha.nome}</span>
+            </label>
+            <input
+              id="pin"
+              className="campo numeros mt-3 w-full text-center text-3xl tracking-[0.5em]"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              autoFocus
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+            />
+            <button className="botao-ouro mt-3 w-full py-3" disabled={pin.length < 4 || ocupado}>
+              {ocupado ? "Conferindo…" : "Entrar na mesa"}
+            </button>
+            <button
+              type="button"
+              className="mt-4 text-tinta-suave underline underline-offset-2"
+              onClick={() => {
+                setEscolha(null);
+                setPin("");
+                setErro(null);
+              }}
+            >
+              Escolher outro personagem
+            </button>
+          </form>
+        )}
+
+        {erro && (
+          <p role="alert" className="mt-4 rounded-sm border border-pv/40 bg-pv/10 p-3 text-center text-pv">
+            {erro}
+          </p>
+        )}
+      </div>
+
+      <Link href="/nova-mesa" className="mt-auto pt-12 text-tinta-suave underline underline-offset-2">
+        Criar uma mesa para outra campanha
       </Link>
     </main>
   );
