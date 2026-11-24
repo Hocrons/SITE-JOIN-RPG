@@ -99,6 +99,6 @@ Em **Escudo → Backup**:
 - **Restaurar:** volta a mesa ao estado do arquivo. Só aceita backup da mesma mesa; jogadores continuam conectados.
 
 ## Tema
-Jogadores escolhem no ícone ao lado de "Sair": automático (segue o celular), claro ou escuro. A Área do Mestre é sempre escura. O quadro de investigação continua claro nos dois temas.
+Jogadores alternam no ícone ao lado de "Sair" entre claro e escuro. Antes de escolher, segue o tema do celular. A Área do Mestre é sempre escura. O quadro de investigação continua claro nos dois temas.
 
 > Arte, brasão e ícones são originais; nada oficial de Ordem Paranormal é usado.
