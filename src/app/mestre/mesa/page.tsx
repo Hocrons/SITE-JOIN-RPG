@@ -7,6 +7,7 @@ import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { PainelCena } from "@/components/tabuleiro/PainelCena";
 import { PainelNevoa, useFerramentaNevoa, type EstadoNevoa } from "@/components/tabuleiro/PainelNevoa";
 import { PainelTokens } from "@/components/tabuleiro/PainelTokens";
+import { SeletorCenas } from "@/components/tabuleiro/SeletorCenas";
 import { BotaoMapa, FaixaVez, IconeRegua } from "@/components/tabuleiro/BotaoMapa";
 import { useFerramentaRegua } from "@/components/tabuleiro/regua";
 import { tokenDaVez, useVez } from "@/lib/combate";
@@ -28,7 +29,6 @@ export default function MesaMestre() {
   const dados = useCenas(mesa?.id);
   const [aberta, setAberta] = useState<string | null>(null);
   const [alinhando, setAlinhando] = useState(false);
-  const [nova, setNova] = useState("");
   const [lado, setLado] = useState<"cena" | "tokens" | "nevoa">("tokens");
   const [estadoNevoa, setEstadoNevoa] = useState<EstadoNevoa | null>(null);
   const [raioNevoa, setRaioNevoa] = useState(1.5);
@@ -76,48 +76,25 @@ export default function MesaMestre() {
     >
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Cenas">
-            {dados.cenas.map((c) => (
-              <button
-                key={c.id}
-                role="tab"
-                aria-selected={c.id === aberta}
-                onClick={() => {
-                  setAberta(c.id);
-                  setAlinhando(false);
-                  setEstadoNevoa(null);
-                  setSelecionado(null);
-                }}
-                className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-1.5 ${
-                  c.id === aberta ? "border-ouro bg-ouro/90 text-marinho" : "border-ouro/25 text-nevoa/80 hover:bg-ouro/10"
-                }`}
-              >
-                {c.ativa && <span className="h-2 w-2 rounded-full bg-pd-vivo" title="Na mesa dos jogadores" />}
-                {c.nome}
-              </button>
-            ))}
-            <form
-              className="flex shrink-0 gap-1"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!nova.trim()) return;
-                const c = await dados.criar(nova);
-                setNova("");
-                if (c) setAberta(c.id);
+          <div className="flex flex-wrap items-center gap-2">
+            <SeletorCenas
+              dados={dados}
+              aberta={cena}
+              onAbrir={(c) => {
+                setAberta(c.id);
+                setAlinhando(false);
+                setEstadoNevoa(null);
+                setSelecionado(null);
               }}
-            >
-              <input
-                value={nova}
-                onChange={(e) => setNova(e.target.value)}
-                placeholder="Nova cena"
-                aria-label="Nome da nova cena"
-                maxLength={80}
-                className="w-36 rounded-sm border border-ouro/25 bg-noite px-2.5 py-1.5 text-nevoa placeholder:text-nevoa/40"
-              />
-              <button className="rounded-sm border border-ouro/35 px-3 text-ouro-claro hover:bg-ouro/10" disabled={!nova.trim()}>
-                Criar
-              </button>
-            </form>
+            />
+            {cena &&
+              (cena.ativa ? (
+                <span className="text-sm text-pd-vivo">Na mesa dos jogadores</span>
+              ) : (
+                <button onClick={() => dados.ativar(cena.id)} className="rounded-sm border border-ouro/30 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
+                  Mostrar aos jogadores
+                </button>
+              ))}
           </div>
 
           {cena ? (
@@ -187,7 +164,7 @@ export default function MesaMestre() {
             />
           ) : (
             <div className="painel grid h-[50dvh] place-items-center p-6 text-center italic text-nevoa/60">
-              Crie a primeira cena (ex.: “Paratium”) e envie o mapa dela.
+              Crie a primeira cena em “Escolher cena” (ex.: “Porto”, na região “Paratium”) e envie o mapa dela.
             </div>
           )}
         </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CORES_GRADE, type Cena, type DadosCenas } from "@/lib/cenas";
+import { regioesDe } from "./SeletorCenas";
 
 const CAMPO = "w-full rounded-sm border border-ouro/25 bg-noite px-2.5 py-1.5 text-nevoa placeholder:text-nevoa/40";
 
@@ -34,6 +35,8 @@ export function PainelCena({
           onBlur={() => nome.trim() && nome !== cena.nome && g({ nome: nome.trim() })}
         />
       </label>
+
+      <CampoRegiao cena={cena} dados={dados} />
 
       <section className="grid gap-2">
         <h3 className="titulo text-ouro-claro">Quem vê</h3>
@@ -178,5 +181,38 @@ function Regulador({ rotulo, valor, min, max, passo, onMudar }: { rotulo: string
         />
       </div>
     </div>
+  );
+}
+
+function CampoRegiao({ cena, dados }: { cena: Cena; dados: DadosCenas }) {
+  const [valor, setValor] = useState(cena.regiao ?? "");
+  const id = useId();
+  useEffect(() => setValor(cena.regiao ?? ""), [cena.id, cena.regiao]);
+  const salvar = () => {
+    const r = valor.trim();
+    if (r === (cena.regiao ?? "")) return;
+    // entra no fim da região nova
+    const ordem = dados.cenas.filter((c) => (c.regiao ?? "") === r).reduce((m, c) => Math.max(m, c.ordem), -1) + 1;
+    dados.salvar(cena.id, { regiao: r, ordem });
+  };
+  return (
+    <label className="grid gap-0.5 text-sm text-nevoa/70">
+      Região
+      <input
+        className={CAMPO}
+        value={valor}
+        list={id}
+        maxLength={60}
+        placeholder="Ex.: Paratium"
+        onChange={(e) => setValor(e.target.value)}
+        onBlur={salvar}
+        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+      />
+      <datalist id={id}>
+        {regioesDe(dados.cenas).map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
+    </label>
   );
 }
