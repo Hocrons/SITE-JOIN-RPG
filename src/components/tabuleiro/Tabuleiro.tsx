@@ -247,6 +247,10 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
     if (!onPing || ferramenta || modo !== "navegar") return;
     if ("touches" in e.evt && e.evt.touches.length > 1) return;
     if ("button" in e.evt && e.evt.button !== 0) return;
+    // em cima de algo que se arrasta (um token): é movimento, não ping
+    for (let n: Konva.Node | null = e.target; n && n !== stageRef.current; n = n.getParent()) {
+      if (n.draggable()) return;
+    }
     const tela = stageRef.current?.getPointerPosition();
     const m = mundo();
     if (!tela || !m) return;
@@ -266,6 +270,22 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
     const tela = stageRef.current?.getPointerPosition();
     if (s0 && tela && Math.hypot(tela.x - s0.x, tela.y - s0.y) > 8) cancelarSegurar();
   }
+  useEffect(() => {
+    const mover = (e: PointerEvent) => {
+      const s0 = segurar.current;
+      const r = stageRef.current?.container().getBoundingClientRect();
+      if (s0 && r && Math.hypot(e.clientX - r.left - s0.x, e.clientY - r.top - s0.y) > 8) cancelarSegurar();
+    };
+    const soltar = () => cancelarSegurar();
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+    return () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+    };
+  }, []);
   function cancelarSegurar() {
     if (segurar.current) clearTimeout(segurar.current.t);
     segurar.current = null;
@@ -297,7 +317,9 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
             scaleX={vista.k}
             scaleY={vista.k}
             draggable={modo === "navegar" && !ferramenta}
+            onDragStart={cancelarSegurar}
             onDragMove={(e) => {
+              cancelarSegurar();
               if (e.target === stageRef.current) setVista((v) => ({ ...v, x: e.target.x(), y: e.target.y() }));
             }}
             onDragEnd={(e) => {
