@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { CartaoRolagem } from "./CartaoRolagem";
 import { useAoVivo } from "@/lib/aoVivo";
+import { useCatalogo, useItensPersonagem } from "@/lib/catalogo";
+import { rolagensDaFicha } from "@/lib/rolagensFicha";
 import { descreverPreset, expressaoDoTeste, expressaoValida, rolar, type Preset, type TipoPreset } from "@/lib/dados";
 import { ATRIBUTOS, NOME_ATRIBUTO } from "@/lib/regras";
 import { supabase } from "@/lib/supabase";
@@ -40,6 +42,16 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
     ordenar: (a, b) => a.ordem - b.ordem || a.titulo.localeCompare(b.titulo),
   });
   const presets = todosPresets.linhas.filter((p) => (p.personagem_id ?? null) === personagemId);
+
+  // rolagens que saem sozinhas da ficha (armas com modificações, rituais, itens e poderes com dados)
+  const itensFicha = useItensPersonagem(personagemId ? mesaId : null, personagemId);
+  const { todos: catalogo } = useCatalogo(personagemId ? mesaId : null);
+  const daFicha = personagemId
+    ? rolagensDaFicha(itensFicha.linhas, new Map(catalogo.map((c) => [c.id, c])), pericias)
+    : [];
+  const totalFicha = daFicha.reduce((n, g) => n + g.itens.length, 0);
+  const [abaPresets, setAbaPresets] = useState<"ficha" | "meus">("ficha");
+  const mostrarFicha = !!personagemId && abaPresets === "ficha";
 
   async function chamar(pedido: Parameters<typeof rolar>[0]): Promise<Rolagem> {
     const r = await rolar({ ...pedido, secreta });
@@ -135,7 +147,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
       };
 
   return (
-    <div className="grid gap-4">
+    <div className="grid min-w-0 gap-4 [&>*]:min-w-0">
       {/* Resultado mais recente (ataque e dano aparecem juntos) */}
       {ultimos.length > 0 && (
         <section aria-live="polite" aria-label="Último resultado" className="grid gap-2">
@@ -209,6 +221,76 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
 
       {/* Presets */}
       <section className={`${t.painel} p-4`}>
+        {personagemId && (
+          <div className={`mb-3 grid grid-cols-2 overflow-hidden rounded-sm border ${t.borda}`} role="tablist" aria-label="Presets">
+            {(["ficha", "meus"] as const).map((a) => (
+              <button
+                key={a}
+                role="tab"
+                aria-selected={abaPresets === a}
+                onClick={() => setAbaPresets(a)}
+                className={`titulo py-1.5 ${
+                  abaPresets === a ? (escuro ? "bg-ouro/90 text-marinho" : "bg-marinho text-pergaminho-claro") : t.titulo
+                }`}
+              >
+                {a === "ficha" ? "Da ficha" : "Meus presets"}{" "}
+                <span className="numeros text-sm opacity-75">{a === "ficha" ? totalFicha : presets.length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {mostrarFicha ? (
+          <div className="grid min-w-0 gap-3">
+            {daFicha.map((g) => (
+              <div key={g.titulo} className="min-w-0">
+                <h3 className={`titulo mb-0.5 text-sm ${t.sutil}`}>{g.titulo}</h3>
+                <ul className={`divide-y ${escuro ? "divide-ouro/10" : "divide-ouro-escuro/15"}`}>
+                  {g.itens.map(({ preset: p, nota }) => (
+                    <li key={p.id} className="flex items-center gap-2 py-1.5">
+                      <button onClick={() => rolarPreset(p)} disabled={rolando} className="min-w-0 flex-1 text-left">
+                        <span className={`titulo block truncate ${t.titulo}`}>{p.titulo}</span>
+                        <span className={`line-clamp-2 text-sm italic ${t.sutil}`}>
+                          {descreverPreset(p)}
+                          {nota ? ` (${nota})` : ""}
+                        </span>
+                      </button>
+                      {p.tipo === "arma" && (
+                        <button
+                          onClick={() => rolarDanoCritico(p)}
+                          disabled={rolando}
+                          className={`shrink-0 rounded-sm px-2 py-1 text-sm ${t.chip}`}
+                          title="Rolar só o dano, já como crítico"
+                        >
+                          crítico
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          const { id: _id, ...resto } = p;
+                          void _id;
+                          setEditando({ ...resto });
+                          setAbaPresets("meus");
+                        }}
+                        className={`shrink-0 rounded-sm px-2 py-1 text-sm ${t.chip}`}
+                        title="Copiar para Meus presets e ajustar"
+                        aria-label={`Copiar ${p.titulo} para meus presets`}
+                      >
+                        ✎
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {totalFicha === 0 && (
+              <p className={`py-1 italic ${t.sutil}`}>
+                Armas, rituais e itens com dados que você adicionar na aba Itens aparecem aqui prontos para rolar, já com as
+                modificações e maldições.
+              </p>
+            )}
+          </div>
+        ) : (
+        <>
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <h2 className={`titulo text-lg ${t.titulo}`}>{eMestre ? "Presets do mestre" : "Seus presets"}</h2>
           {presets.length > 0 && (
@@ -273,6 +355,8 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
         >
           + Novo preset
         </button>
+        </>
+        )}
       </section>
 
       {/* Perícias da ficha */}

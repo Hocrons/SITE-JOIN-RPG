@@ -109,27 +109,6 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
     }
   }
 
-  async function criarPreset(i: ItemPersonagem, c: EntradaCatalogo) {
-    const d = c.dados as Record<string, string | number | undefined>;
-    const corpoACorpo = String(d.subtipo ?? "").includes("Corpo a Corpo");
-    const arma = armaComMelhorias(String(d.dano ?? "").split("/")[0], Number(d.margem ?? 20), Number(d.multiplicador ?? 2), i.melhorias);
-    const { error } = await supabase().from("presets_dados").insert({
-      mesa_id: p.mesa_id,
-      personagem_id: p.id,
-      titulo: i.nome,
-      tipo: "arma",
-      atributo: corpoACorpo ? "FOR" : "AGI",
-      bonus: arma.ataque,
-      margem: arma.margem,
-      multiplicador: arma.multiplicador,
-      expressao: arma.dano,
-    });
-    if (error) return alert(error.message);
-    alert(
-      `Preset "${i.nome}" criado na aba Dados${i.melhorias?.length ? ", já com as modificações e maldições" : ""}. Some lá o bônus da perícia (Luta ou Pontaria).`,
-    );
-  }
-
   function conjurar(i: ItemPersonagem, c: EntradaCatalogo | undefined) {
     const custo = Number(c?.dados.custo_pe ?? 0);
     if (!custo) return;
@@ -284,9 +263,7 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                             </span>
                           )}
                           {c?.tipo === "arma" && c.dados.dano ? (
-                            <button onClick={() => criarPreset(i, c)} className="rounded-sm border border-ouro-escuro/40 px-2.5 py-1 text-marinho">
-                              Criar preset de dados
-                            </button>
+                            <span className="text-tinta-suave">Pronta para rolar em Dados, na aba “Da ficha”.</span>
                           ) : null}
                           <button onClick={() => remover(i)} className="ml-auto px-2 py-1 text-pv underline underline-offset-2">
                             Tirar da ficha
