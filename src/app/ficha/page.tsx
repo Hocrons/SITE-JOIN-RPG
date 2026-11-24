@@ -62,7 +62,7 @@ export default function PaginaFicha() {
 
   return (
     <div className="pb-24">
-      <main className="mx-auto max-w-xl px-4 pt-4">
+      <main className={`mx-auto px-4 pt-4 ${aba === "mesa" ? "max-w-6xl" : "max-w-xl"}`}>
         <header className="mb-4 flex items-center gap-3">
           <Brasao tamanho={30} />
           <p className="titulo mr-auto text-lg text-marinho">{mesa.nome}</p>

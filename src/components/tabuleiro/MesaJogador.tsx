@@ -24,7 +24,7 @@ export function MesaJogador({ mesaId }: { mesaId: string }) {
   return (
     <div className="grid gap-2">
       <h1 className="titulo pincelada justify-self-start text-xl text-marinho">{ativa.nome}</h1>
-      <Tabuleiro cena={ativa} altura="calc(100dvh - 235px)" />
+      <Tabuleiro cena={ativa} altura="max(320px, calc(100dvh - 232px))" />
     </div>
   );
 }

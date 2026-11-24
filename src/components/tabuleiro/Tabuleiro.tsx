@@ -67,10 +67,25 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
   // enquadra ao abrir uma cena (ou quando o mapa muda de tamanho)
   useEffect(() => {
     const chave = `${cena.id}:${largura}x${alturaMapa}:${tam.w > 0}`;
-    if (enquadradoPara.current === chave || !tam.w) return;
+    if (!tam.w) return;
+    if (enquadradoPara.current === chave && !reenquadrar.current) return;
     enquadradoPara.current = chave;
+    reenquadrar.current = false;
     enquadrar();
-  }, [cena.id, largura, alturaMapa, tam.w, enquadrar]);
+  }, [cena.id, largura, alturaMapa, tam.w, tam.h, enquadrar]);
+
+  // ao entrar/sair da tela cheia, reenquadra quando a caixa tiver o tamanho novo
+  const reenquadrar = useRef(false);
+  function alternarTelaCheia() {
+    reenquadrar.current = true;
+    setTelaCheia((t) => !t);
+  }
+  useEffect(() => {
+    if (!telaCheia) return;
+    const sair = (e: KeyboardEvent) => e.key === "Escape" && alternarTelaCheia();
+    window.addEventListener("keydown", sair);
+    return () => window.removeEventListener("keydown", sair);
+  }, [telaCheia]);
 
   function zoomEm(px: number, py: number, fator: number) {
     setVista((v) => {
@@ -145,13 +160,14 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
   const semMapa = !cena.mapa_caminho && !cena.mapa_leve_caminho;
 
   return (
-    <div className={telaCheia ? "fixed inset-0 z-50 bg-breu" : "relative"}>
+    <div className={telaCheia ? "fixed inset-0 z-50 bg-breu" : "relative w-full min-w-0"}>
       <div
         ref={caixa}
-        className="relative overflow-hidden rounded-sm border border-ouro/25 bg-[#0d0c0e] touch-none select-none"
+        className="relative w-full overflow-hidden rounded-sm border border-ouro/25 bg-[#0d0c0e] touch-none select-none"
         style={{ height: telaCheia ? "100dvh" : altura, cursor: modo === "alinhar" ? "crosshair" : "grab" }}
       >
         {tam.w > 0 && (
+          <div className="absolute inset-0">
           <Stage
             ref={stageRef}
             width={tam.w}
@@ -231,6 +247,7 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
               </Layer>
             )}
           </Stage>
+          </div>
         )}
 
         {semMapa && (
@@ -253,7 +270,7 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
           <BotaoMapa rotulo="Aproximar" onClick={() => zoomEm(tam.w / 2, tam.h / 2, 1.3)}>+</BotaoMapa>
           <BotaoMapa rotulo="Afastar" onClick={() => zoomEm(tam.w / 2, tam.h / 2, 1 / 1.3)}>−</BotaoMapa>
           <BotaoMapa rotulo="Enquadrar o mapa" onClick={enquadrar}>⤢</BotaoMapa>
-          <BotaoMapa rotulo={telaCheia ? "Sair da tela cheia" : "Tela cheia"} onClick={() => setTelaCheia(!telaCheia)}>
+          <BotaoMapa rotulo={telaCheia ? "Sair da tela cheia" : "Tela cheia"} onClick={alternarTelaCheia}>
             {telaCheia ? "✕" : "⛶"}
           </BotaoMapa>
         </div>
