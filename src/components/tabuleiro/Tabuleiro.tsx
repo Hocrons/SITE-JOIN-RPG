@@ -2,7 +2,7 @@
 
 import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as KImage, Layer, Rect, Shape, Stage } from "react-konva";
+import { Circle, Image as KImage, Layer, Rect, Shape, Stage } from "react-konva";
 import type { Cena } from "@/lib/cenas";
 import { useUrlArquivo } from "@/lib/quadro";
 import { CamadaTokens, type PropsCamadaTokens } from "./CamadaTokens";
@@ -11,6 +11,24 @@ export interface Vista {
   x: number;
   y: number;
   k: number;
+}
+
+export interface PontoMundo {
+  x: number;
+  y: number;
+}
+export interface Ferramenta {
+  cursor: string;
+  inicio: (p: PontoMundo) => void;
+  /** `pressionado` = com o botão/dedo apertado; sem ele, é só o cursor passando. */
+  mover: (p: PontoMundo, pressionado: boolean) => void;
+  fim: (p: PontoMundo | null) => void;
+  /** Prévia (em coordenadas do mapa), por cima de tudo. */
+  previa?: {
+    circulo?: { x: number; y: number; r: number } | null;
+    retangulo?: { x: number; y: number; w: number; h: number } | null;
+    cor: string;
+  };
 }
 
 export interface AlinhamentoGrade {
@@ -31,6 +49,10 @@ interface Props {
   extras?: React.ReactNode;
   /** Tokens da cena (desenhados acima do mapa e da grade). */
   tokens?: Omit<PropsCamadaTokens, "cena" | "k">;
+  /** Ferramenta ativa (névoa, régua…): o arrasto no mapa vai para ela em vez de mover a vista. */
+  ferramenta?: Ferramenta | null;
+  /** Máscara de névoa (opaco = coberto), desenhada acima do mapa e abaixo dos tokens. */
+  nevoa?: { canvas: HTMLCanvasElement; versao: number; opacidade: number } | null;
   /** Centraliza a vista neste ponto (px do mapa) sempre que `n` mudar. */
   foco?: { x: number; y: number; n: number } | null;
   /** Clique/toque no mapa fora de qualquer token. */
@@ -47,7 +69,7 @@ const limitar = (k: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, k));
  * Tabuleiro em canvas (Konva). Unidades do mundo = pixels do mapa original.
  * Abre pelo mapa leve e, no computador, troca pelo otimizado quando ele chega.
  */
-export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco }: Props) {
+export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco, ferramenta, nevoa }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
@@ -182,6 +204,39 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
     onAlinhar?.({ tamanho, x: Math.round((((x % tamanho) + tamanho) % tamanho) * 10) / 10, y: Math.round((((y % tamanho) + tamanho) % tamanho) * 10) / 10 });
   }
 
+  // ferramenta: ignora quando há dois dedos (é pinça)
+  const pressionado = useRef(false);
+  function ferInicio(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+    if (!ferramenta) return;
+    if ("touches" in e.evt && e.evt.touches.length > 1) {
+      if (pressionado.current) ferramenta.fim(null);
+      pressionado.current = false;
+      return;
+    }
+    if ("button" in e.evt && e.evt.button !== 0) return;
+    const m = mundo();
+    if (!m) return;
+    pressionado.current = true;
+    ferramenta.inicio(m);
+  }
+  function ferMover(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+    if (!ferramenta) return;
+    if ("touches" in e.evt && e.evt.touches.length > 1) return;
+    const m = mundo();
+    if (m) ferramenta.mover(m, pressionado.current);
+  }
+  function ferFim() {
+    if (!ferramenta || !pressionado.current) return;
+    pressionado.current = false;
+    ferramenta.fim(mundo());
+  }
+
+  // a máscara da névoa é um canvas que muda por dentro: redesenha a camada
+  const camadaNevoa = useRef<Konva.Layer>(null);
+  useEffect(() => {
+    camadaNevoa.current?.batchDraw();
+  }, [nevoa?.versao, nevoa?.canvas]);
+
   const semMapa = !cena.mapa_caminho && !cena.mapa_leve_caminho;
 
   return (
@@ -189,7 +244,7 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
       <div
         ref={caixa}
         className="relative w-full overflow-hidden rounded-sm border border-ouro/25 bg-[#0d0c0e] touch-none select-none"
-        style={{ height: telaCheia ? "100dvh" : altura, cursor: modo === "alinhar" ? "crosshair" : "grab" }}
+        style={{ height: telaCheia ? "100dvh" : altura, cursor: ferramenta ? ferramenta.cursor : modo === "alinhar" ? "crosshair" : "grab" }}
       >
         {tam.w > 0 && (
           <div className="absolute inset-0">
@@ -201,7 +256,7 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
             y={vista.y}
             scaleX={vista.k}
             scaleY={vista.k}
-            draggable={modo === "navegar"}
+            draggable={modo === "navegar" && !ferramenta}
             onDragMove={(e) => {
               if (e.target === stageRef.current) setVista((v) => ({ ...v, x: e.target.x(), y: e.target.y() }));
             }}
@@ -210,19 +265,36 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
             }}
             onWheel={aoRodar}
             onClick={(e) => {
-              if (modo === "navegar" && e.target === stageRef.current) onClicarFundo?.();
+              if (modo === "navegar" && !ferramenta && e.target === stageRef.current) onClicarFundo?.();
             }}
             onTap={(e) => {
               if (modo === "navegar" && e.target === stageRef.current) onClicarFundo?.();
             }}
             onTouchMove={aoTocarMover}
-            onMouseDown={alinharInicio}
-            onTouchStart={alinharInicio}
-            onMouseMove={alinharMover}
-            onMouseUp={alinharFim}
+            onMouseDown={(e) => {
+              alinharInicio();
+              ferInicio(e);
+            }}
+            onTouchStart={(e) => {
+              alinharInicio();
+              ferInicio(e);
+            }}
+            onMouseMove={(e) => {
+              alinharMover();
+              ferMover(e);
+            }}
+            onMouseUp={() => {
+              alinharFim();
+              ferFim();
+            }}
+            onMouseLeave={() => {
+              ferFim();
+              ferramenta?.mover({ x: -1e9, y: -1e9 }, false);
+            }}
             onTouchEnd={() => {
               pinca.current = null;
               alinharFim();
+              ferFim();
             }}
           >
             <Layer listening={false}>
@@ -262,8 +334,40 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
                 />
               )}
             </Layer>
+            {nevoa && (
+              <Layer ref={camadaNevoa} listening={false}>
+                <KImage image={nevoa.canvas} x={0} y={0} width={largura} height={alturaMapa} opacity={nevoa.opacidade} />
+              </Layer>
+            )}
             {tokens && <CamadaTokens {...tokens} cena={cena} k={vista.k} />}
             {camadas?.(vista)}
+            {ferramenta?.previa && (
+              <Layer listening={false}>
+                {ferramenta.previa.circulo && (
+                  <Circle
+                    x={ferramenta.previa.circulo.x}
+                    y={ferramenta.previa.circulo.y}
+                    radius={ferramenta.previa.circulo.r}
+                    stroke={ferramenta.previa.cor}
+                    strokeWidth={2}
+                    strokeScaleEnabled={false}
+                    dash={[6, 4]}
+                  />
+                )}
+                {ferramenta.previa.retangulo && (
+                  <Rect
+                    {...{ x: ferramenta.previa.retangulo.x, y: ferramenta.previa.retangulo.y }}
+                    width={ferramenta.previa.retangulo.w}
+                    height={ferramenta.previa.retangulo.h}
+                    stroke={ferramenta.previa.cor}
+                    strokeWidth={2}
+                    strokeScaleEnabled={false}
+                    dash={[6, 4]}
+                    fill={ferramenta.previa.cor + "26"}
+                  />
+                )}
+              </Layer>
+            )}
             {selecao && (
               <Layer listening={false}>
                 <Rect

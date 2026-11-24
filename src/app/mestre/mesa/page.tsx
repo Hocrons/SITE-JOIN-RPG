@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Vista } from "@/components/tabuleiro/Tabuleiro";
 import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { PainelCena } from "@/components/tabuleiro/PainelCena";
+import { PainelNevoa, useFerramentaNevoa, type EstadoNevoa } from "@/components/tabuleiro/PainelNevoa";
 import { PainelTokens } from "@/components/tabuleiro/PainelTokens";
+import { useNevoa } from "@/lib/nevoa";
 import { useCenas } from "@/lib/cenas";
 import { useSessao } from "@/lib/sessao";
 import { useTokens } from "@/lib/tokens";
@@ -23,7 +25,9 @@ export default function MesaMestre() {
   const [aberta, setAberta] = useState<string | null>(null);
   const [alinhando, setAlinhando] = useState(false);
   const [nova, setNova] = useState("");
-  const [lado, setLado] = useState<"cena" | "tokens">("tokens");
+  const [lado, setLado] = useState<"cena" | "tokens" | "nevoa">("tokens");
+  const [estadoNevoa, setEstadoNevoa] = useState<EstadoNevoa | null>(null);
+  const [raioNevoa, setRaioNevoa] = useState(1.5);
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const fichas = useMesa(mesa?.id, true);
   const vistaAtual = useRef<{ v: Vista; w: number; h: number } | null>(null);
@@ -36,6 +40,9 @@ export default function MesaMestre() {
 
   const cena = dados.cenas.find((c) => c.id === aberta);
   const dt = useTokens(mesa?.id, cena?.id);
+  const nevoa = useNevoa(cena, true);
+  // a ferramenta da névoa só vale com a aba da névoa aberta
+  const ferramenta = useFerramentaNevoa(nevoa, cena, lado === "nevoa" ? estadoNevoa : null, raioNevoa);
 
   const centro = useCallback(() => {
     const a = vistaAtual.current;
@@ -66,6 +73,7 @@ export default function MesaMestre() {
                 onClick={() => {
                   setAberta(c.id);
                   setAlinhando(false);
+                  setEstadoNevoa(null);
                   setSelecionado(null);
                 }}
                 className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-1.5 ${
@@ -117,12 +125,14 @@ export default function MesaMestre() {
                 vistaAtual.current = { v, w: t.w, h: t.h };
               }}
               onClicarFundo={() => setSelecionado(null)}
+              ferramenta={alinhando ? null : ferramenta}
+              nevoa={nevoa.canvas && cena.nevoa_ativa ? { canvas: nevoa.canvas, versao: nevoa.versao, opacidade: 0.5 } : null}
               tokens={{
                 tokens: dt.tokens,
                 arrasto: dt.arrasto,
                 personagens: fichas.personagens.linhas,
                 fichas: fichas.fichas.linhas,
-                podeMover: () => !alinhando,
+                podeMover: () => !alinhando && !ferramenta,
                 selecionado,
                 onSelecionar: (t) => {
                   setSelecionado(t.id);
@@ -145,8 +155,8 @@ export default function MesaMestre() {
             className="painel p-4 lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
             aria-label="Configurar cena"
           >
-            <div className="mb-4 grid grid-cols-2 gap-1 rounded-sm border border-ouro/20 p-1" role="tablist" aria-label="Painel">
-              {(["tokens", "cena"] as const).map((x) => (
+            <div className="mb-4 grid grid-cols-3 gap-1 rounded-sm border border-ouro/20 p-1" role="tablist" aria-label="Painel">
+              {(["tokens", "nevoa", "cena"] as const).map((x) => (
                 <button
                   key={x}
                   role="tab"
@@ -154,11 +164,21 @@ export default function MesaMestre() {
                   onClick={() => setLado(x)}
                   className={`rounded-sm py-1.5 titulo ${lado === x ? "bg-ouro/90 text-marinho" : "text-nevoa/70 hover:bg-ouro/10"}`}
                 >
-                  {x === "tokens" ? `Tokens (${dt.tokens.length})` : "Cena e grade"}
+                  {x === "tokens" ? `Tokens (${dt.tokens.length})` : x === "nevoa" ? "Névoa" : "Cena"}
                 </button>
               ))}
             </div>
-            {lado === "cena" ? (
+            {lado === "nevoa" ? (
+              <PainelNevoa
+                cena={cena}
+                dados={dados}
+                nevoa={nevoa}
+                estado={estadoNevoa}
+                onEstado={setEstadoNevoa}
+                raio={raioNevoa}
+                onRaio={setRaioNevoa}
+              />
+            ) : lado === "cena" ? (
               <PainelCena key={cena.id} cena={cena} dados={dados} alinhando={alinhando} onAlinhar={() => setAlinhando(!alinhando)} />
             ) : (
               <PainelTokens

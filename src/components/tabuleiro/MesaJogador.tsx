@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sigilo } from "@/components/Sigilo";
 import { useCenas } from "@/lib/cenas";
+import { useNevoa } from "@/lib/nevoa";
 import { useTokens } from "@/lib/tokens";
 import type { Ficha, Personagem } from "@/lib/tipos";
 
@@ -28,6 +29,19 @@ export function MesaJogador({
   const { ativa } = useCenas(mesaId);
   const dt = useTokens(mesaId, ativa?.id);
   const [foco, setFoco] = useState<{ x: number; y: number; n: number } | null>(null);
+  const nevoa = useNevoa(ativa, false);
+  // na névoa, só os agentes continuam aparecendo
+  const { coberto } = nevoa;
+  const visiveis = useMemo(() => {
+    if (!ativa || !nevoa.ativa) return dt.tokens;
+    const s = ativa.grade_tamanho;
+    return dt.tokens.filter(
+      (t) =>
+        t.faccao === "agente" ||
+        t.personagem_id === meuPersonagem ||
+        !coberto(ativa.grade_x + (t.coluna + t.tamanho / 2) * s, ativa.grade_y + (t.linha + t.tamanho / 2) * s),
+    );
+  }, [dt.tokens, ativa, nevoa.ativa, coberto, meuPersonagem]);
   const meu = dt.tokens.find((t) => meuPersonagem && t.personagem_id === meuPersonagem);
   if (!ativa) {
     return (
@@ -58,8 +72,9 @@ export function MesaJogador({
             />
           )
         }
+        nevoa={nevoa.canvas && nevoa.ativa ? { canvas: nevoa.canvas, versao: nevoa.versao, opacidade: 1 } : null}
         tokens={{
-          tokens: dt.tokens,
+          tokens: visiveis,
           arrasto: dt.arrasto,
           personagens,
           fichas,

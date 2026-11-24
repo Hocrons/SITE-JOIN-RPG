@@ -21,6 +21,8 @@ export interface Cena {
   grade_visivel: boolean;
   grade_cor: string;
   metros_por_quadrado: number;
+  nevoa_ativa: boolean;
+  nevoa_caminho: string | null;
   atualizado_em: string;
 }
 
@@ -106,7 +108,7 @@ export function useCenas(mesaId: string | null | undefined) {
   }
 
   async function excluir(c: Cena) {
-    const caminhos = [c.mapa_caminho, c.mapa_leve_caminho, c.mapa_original_caminho].filter(Boolean) as string[];
+    const caminhos = [c.mapa_caminho, c.mapa_leve_caminho, c.mapa_original_caminho, c.nevoa_caminho].filter(Boolean) as string[];
     if (caminhos.length) await supabase().storage.from("midia").remove(caminhos);
     if (await erro(supabase().from("cenas").delete().eq("id", c.id))) {
       cenas.setLinhas((l) => l.filter((x) => x.id !== c.id));
