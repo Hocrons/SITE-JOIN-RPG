@@ -355,6 +355,7 @@ export function Quadro({ mesaId, eMestre, altura = "70dvh" }: Props) {
                 c={selCartao}
                 arquivo={selCartao.arquivo_id ? arquivoPorId.get(selCartao.arquivo_id) : undefined}
                 q={q}
+                eMestre={eMestre}
                 aoAbrir={setVendo}
                 aoEditar={setEditandoNota}
                 aoLigar={() => setLigandoDe(selCartao.id)}
@@ -447,11 +448,12 @@ function CartaoQuadro({ c, arquivo, selecionado, alvoLigacao }: { c: Cartao; arq
 }
 
 function AcoesCartao({
-  c, arquivo, q, aoAbrir, aoEditar, aoLigar, aoFechar,
+  c, arquivo, q, eMestre, aoAbrir, aoEditar, aoLigar, aoFechar,
 }: {
   c: Cartao;
   arquivo?: ArquivoMesa;
   q: DadosQuadro;
+  eMestre: boolean;
   aoAbrir: (a: ArquivoMesa) => void;
   aoEditar: (c: Cartao) => void;
   aoLigar: () => void;
@@ -475,6 +477,17 @@ function AcoesCartao({
         {c.tipo === "nota" && (
           <button className="botao-ouro px-3 py-1" onClick={() => aoEditar(c)}>
             Editar
+          </button>
+        )}
+        {arquivo && eMestre && (
+          <button
+            className={b}
+            onClick={() => {
+              const t = prompt("Novo nome do arquivo", arquivo.titulo)?.trim();
+              if (t && t !== arquivo.titulo) q.salvarArquivo(arquivo.id, { titulo: t.slice(0, 160) });
+            }}
+          >
+            Renomear
           </button>
         )}
         <button className={b} onClick={aoLigar}>
@@ -607,6 +620,7 @@ function Gaveta({
   const arquivoInput = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
   const [texto, setTexto] = useState<{ titulo: string; texto: string } | null>(null);
+  const [renomeando, setRenomeando] = useState<{ id: string; titulo: string } | null>(null);
   return (
     <div role="dialog" aria-modal="true" aria-label="Arquivos da mesa" className="fixed inset-0 z-[60] flex justify-end bg-black/40" onClick={aoFechar}>
       <aside className="folha-solida flex h-full w-full max-w-md flex-col" onClick={(e) => e.stopPropagation()}>
@@ -668,9 +682,32 @@ function Gaveta({
               <li key={a.id} className="flex items-center gap-3 py-2.5">
                 <Miniatura a={a} />
                 <div className="min-w-0 flex-1">
-                  <button onClick={() => aoAbrir(a)} className="block w-full truncate text-left font-semibold text-marinho underline decoration-ouro/50 underline-offset-[3px]">
-                    {a.titulo}
-                  </button>
+                  {renomeando?.id === a.id ? (
+                    <form
+                      className="flex gap-1.5"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const t = renomeando.titulo.trim();
+                        if (t && t !== a.titulo) await q.salvarArquivo(a.id, { titulo: t });
+                        setRenomeando(null);
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        className="campo min-w-0 flex-1 py-0.5"
+                        value={renomeando.titulo}
+                        maxLength={160}
+                        onChange={(e) => setRenomeando({ id: a.id, titulo: e.target.value })}
+                        onKeyDown={(e) => e.key === "Escape" && setRenomeando(null)}
+                        aria-label="Novo nome"
+                      />
+                      <button className="botao-ouro px-2 text-sm">Salvar</button>
+                    </form>
+                  ) : (
+                    <button onClick={() => aoAbrir(a)} className="block w-full truncate text-left font-semibold text-marinho underline decoration-ouro/50 underline-offset-[3px]">
+                      {a.titulo}
+                    </button>
+                  )}
                   <p className="text-sm text-tinta-suave">
                     {{ imagem: "Imagem", pdf: "PDF", texto: "Texto" }[a.tipo]}, {new Date(a.criado_em).toLocaleDateString("pt-BR")}
                     {noQuadro ? ", no quadro" : ""}
@@ -679,6 +716,16 @@ function Gaveta({
                 <button onClick={() => aoPor(a)} className="shrink-0 rounded-sm border border-ouro-escuro/50 px-2.5 py-1 text-sm text-marinho">
                   {noQuadro ? "Mostrar" : "Pôr no quadro"}
                 </button>
+                {eMestre && renomeando?.id !== a.id && (
+                  <button
+                    onClick={() => setRenomeando({ id: a.id, titulo: a.titulo })}
+                    className="shrink-0 px-1 text-tinta-suave hover:text-marinho"
+                    aria-label={`Renomear ${a.titulo}`}
+                    title="Renomear"
+                  >
+                    ✎
+                  </button>
+                )}
                 {eMestre && (
                   <button
                     onClick={() => confirm(`Apagar “${a.titulo}” de vez? Some do quadro e dos arquivos.`) && q.apagarArquivo(a)}
