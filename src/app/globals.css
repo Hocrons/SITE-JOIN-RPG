@@ -39,7 +39,7 @@
 }
 
 html {
-  color-scheme: only light;
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -402,4 +402,59 @@ body {
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #e9806f 0%, #a3261b 45%, #5d120c 100%);
   box-shadow: 0 2px 3px rgba(30, 10, 5, 0.45);
+}
+
+
+/* =====================================================================
+   Tema escuro dos jogadores: "pergaminho à luz de vela".
+   Mesma identidade (papel, tinta, ouro), com fundo de couro escuro.
+   A Área do Mestre já é escura e não muda.
+   ===================================================================== */
+html[data-tema="escuro"] {
+  color-scheme: dark;
+}
+html[data-tema="escuro"] body:not(:has(.tema-mestre)) {
+  --color-pergaminho: #1c1812;
+  --color-pergaminho-claro: #262019;
+  --color-pergaminho-escuro: #3b3226;
+  --color-tinta: #ece2c9;
+  --color-tinta-suave: #b9a685;
+  --color-marinho: #ead39c;
+  --color-marinho-medio: #d9bf82;
+  --color-marinho-claro: #a9c1ee;
+  --color-ouro-escuro: #b08a35;
+  --color-pv: #e0675a;
+  --color-san: #8fb0ea;
+  --color-pe: #e5b155;
+  --color-pd: #7cc7b3;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .8 0 0 0 0 .6 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"),
+    radial-gradient(110% 80% at 50% 0%, rgba(226, 194, 119, 0.07), transparent 60%),
+    radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
+}
+html[data-tema="escuro"] body:not(:has(.tema-mestre)) .folha {
+  box-shadow:
+    inset 0 0 0 3px var(--color-pergaminho-claro),
+    inset 0 0 0 4px color-mix(in oklab, var(--color-ouro) 30%, transparent),
+    0 6px 18px -10px rgba(0, 0, 0, 0.7);
+}
+/* texto escuro sobre o dourado continua escuro */
+html[data-tema="escuro"] body:not(:has(.tema-mestre)) .botao-ouro {
+  color: #1c1812;
+}
+html[data-tema="escuro"] body:not(:has(.tema-mestre)) .trilho {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+/* o quadro de investigação é um objeto físico: papel claro em qualquer tema */
+html[data-tema="escuro"] .quadro-superficie {
+  --color-pergaminho: #e9d9b4;
+  --color-pergaminho-claro: #f3e8cc;
+  --color-pergaminho-escuro: #d2bc8a;
+  --color-tinta: #2a1f14;
+  --color-tinta-suave: #6a5338;
+  --color-marinho: #12284a;
+  --color-ouro-escuro: #7e6118;
+  --color-pv: #8e1b1b;
+  color: var(--color-tinta);
 }

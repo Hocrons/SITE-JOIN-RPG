@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Brasao } from "@/components/Brasao";
 import { Conexao } from "@/components/Conexao";
+import { SeletorTema } from "@/components/SeletorTema";
 import { CodiceJogador } from "@/components/codice/CodiceJogador";
 import { CadernoLore } from "@/components/caderno/CadernoLore";
 import { Quadro } from "@/components/quadro/Quadro";
@@ -62,6 +63,7 @@ export default function PaginaFicha() {
           <Brasao tamanho={30} />
           <p className="titulo mr-auto text-lg text-marinho">{mesa.nome}</p>
           <Conexao status={dados.personagens.status} escuro={false} />
+          <SeletorTema />
           <button onClick={sair} className="text-sm text-tinta-suave underline underline-offset-2">
             Sair
           </button>

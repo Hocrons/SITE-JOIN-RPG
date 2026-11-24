@@ -1,6 +1,6 @@
 # Paratus — site da mesa (Ordem Paranormal)
 
-Fichas compartilhadas em tempo real, Escudo do Mestre com a Âncora, dados com presets, combate, códice da lore e linha do tempo.
+Fichas compartilhadas em tempo real, Escudo do Mestre com a Âncora, dados com presets, catálogo dos livros, combate, Códice da lore, caderno pessoal dos jogadores, quadro de investigação, linha do tempo e backup.
 
 **Stack:** Next.js 15 (App Router) + TypeScript + Tailwind 4 · Supabase (Postgres + RLS + Realtime + Storage) · Vercel.
 
@@ -8,17 +8,17 @@ Fichas compartilhadas em tempo real, Escudo do Mestre com a Âncora, dados com p
 
 ```
 supabase/
-  migrations/0001_paratus.sql   esquema completo: tabelas, RLS, gatilhos, funções (RPC), realtime, storage
-  seed.sql                      mesa "Paratus" + 5 personagens
-  test/                         testes das regras num Postgres local
+  migrations/0001…0015         esquema, regras (RLS), funções e dados iniciais; rode em ordem
+  seed.sql                     mesa "Paratus" + 5 personagens (+ lore e linha do tempo, se 0008/0014 já rodaram)
+  catalogo/                    gerador do catálogo dos livros (0005, 0006)
+  lore/                        lore inicial do Notion (0008) e eventos da linha do tempo (0014)
+  test/                        testes das regras num Postgres local
 src/
-  lib/supabase.ts               cliente do navegador (login anônimo)
-  lib/sessao.tsx                entrada por código + PIN, mesa atual
-  lib/aoVivo.ts                 hook: lê uma tabela e mantém sincronizado em tempo real
-  lib/regras.ts                 ficha ativa, alertas < 25%, teste da Ordem (kh1 / 2d20kl1)
-  app/page.tsx                  entrar na mesa
-  app/nova-mesa/page.tsx        criar outra campanha
-  app/mesa/page.tsx             sala ao vivo (Etapa 1; vira Ficha e Escudo na Etapa 2)
+  app/page.tsx                 entrar na mesa (código + PIN)
+  app/ficha                    jogador: Ficha, Itens, Dados, Combate, Códice (Códice, Linha, Quadro), Notas (Minha lore, Bloco)
+  app/mestre                   Escudo (Âncora, PINs, backup), combate, lore (Códice), linha, quadro, ficha/[id]
+  components/                  peças de tela (codice/, caderno/, quadro/, linha/, mestre/…)
+  lib/                         dados ao vivo (aoVivo), sessão, regras, dados, catálogo, lore, quadro, linha do tempo, tema
 ```
 
 ## Como as regras ficam garantidas no banco
@@ -38,7 +38,7 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
-5. Depois, a cada etapa nova, rode os arquivos novos de `supabase/migrations/` em ordem (`0002_...`, `0003_...`), um por query.
+5. Depois, rode os outros arquivos de `supabase/migrations/` em ordem (`0002` até `0015`), um por query. Quando sair um arquivo novo, rode só ele.
 6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
 ### 2. Rodar no seu computador (opcional)
@@ -63,7 +63,7 @@ npm run dev                    # http://localhost:3000
 | Plague | 4444 |
 | Rehreus Akeldama | 5555 |
 
-Até a tela de PINs ficar pronta (Etapa 2), dá para trocar pelo SQL Editor:
+Troque em **Escudo → PINs de acesso**. Se precisar, também dá pelo SQL Editor:
 ```sql
 select definir_pin((select id from mesas where codigo='PARATUS'), 'NOVO_PIN');                       -- mestre
 select definir_pin((select id from mesas where codigo='PARATUS'), 'NOVO_PIN',
@@ -91,6 +91,14 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 7. Lore pessoal do jogador (estilo Obsidian): notas com [[links]], "mencionada em", grafo; o mestre lê
 - [x] 8. Quadro de investigação: arquivos do mestre registrados, cartões, notas e fios, todos ao vivo
 - [x] 9. Linha do tempo: eras, datas, sessões, imagens, ligações com o Códice e "quem vê" por evento
-- [ ] 10. Polimento final e backup
+- [x] 10. Backup da mesa em JSON (Escudo → Backup) e tema escuro para os jogadores
+
+## Backup
+Em **Escudo → Backup**:
+- **Baixar backup:** um `.json` com tudo da mesa (personagens, fichas, PINs, itens, presets, Códice, linha do tempo, cadernos e quadro). Não inclui rolagens, histórico, combates nem as imagens/PDFs em si (só os caminhos, que continuam no Storage).
+- **Restaurar:** volta a mesa ao estado do arquivo. Só aceita backup da mesma mesa; jogadores continuam conectados.
+
+## Tema
+Jogadores escolhem no ícone ao lado de "Sair": automático (segue o celular), claro ou escuro. A Área do Mestre é sempre escura. O quadro de investigação continua claro nos dois temas.
 
 > Arte, brasão e ícones são originais; nada oficial de Ordem Paranormal é usado.

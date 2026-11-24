@@ -12,6 +12,7 @@ import { FotoPersonagem } from "@/components/FotoPersonagem";
 import { NavMestre } from "@/components/NavMestre";
 import { useCombateAtivo } from "@/lib/combate";
 import { Rolador } from "@/components/Rolador";
+import { JanelaBackup } from "@/components/mestre/JanelaBackup";
 import { alerta, descricaoPersonagem, fichaAtiva, varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { supabase } from "@/lib/supabase";
@@ -42,6 +43,7 @@ export default function Escudo() {
   const dados = useMesa(mesa?.id, true);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [pinsAbertos, setPinsAbertos] = useState(false);
+  const [backupAberto, setBackupAberto] = useState(false);
   const [dadosAbertos, setDadosAbertos] = useState(false);
   const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
 
@@ -96,6 +98,9 @@ export default function Escudo() {
           </div>
           <NavMestre emCombate={!!combateAtivo} />
           <Conexao status={dados.personagens.status} escuro />
+          <button onClick={() => setBackupAberto(true)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
+            Backup
+          </button>
           <button onClick={() => setPinsAbertos(true)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
             PINs de acesso
           </button>
@@ -231,6 +236,7 @@ export default function Escudo() {
         </aside>
       )}
 
+      {backupAberto && <JanelaBackup mesaId={mesa.id} mesaNome={mesa.nome} onFechar={() => setBackupAberto(false)} />}
       {pinsAbertos && <JanelaPins mesaId={mesa.id} pjs={pjs} onFechar={() => setPinsAbertos(false)} />}
     </main>
   );
