@@ -7,6 +7,7 @@ import { Brasao } from "@/components/Brasao";
 import { Conexao } from "@/components/Conexao";
 import type { StatusConexao } from "@/lib/aoVivo";
 import { JanelaBackup } from "@/components/mestre/JanelaBackup";
+import { JanelaResetar } from "@/components/mestre/JanelaResetar";
 import { JanelaPins } from "@/components/mestre/JanelaPins";
 import { IconeGlossario, JanelaGlossario } from "@/components/Glossario";
 import { useCombateAtivo } from "@/lib/combate";
@@ -40,7 +41,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
   const { carregando, membro, mesa, eMestre, sair } = useSessao();
   const { ativo: combate } = useCombateAtivo(mesa?.id);
   const [menu, setMenu] = useState(false);
-  const [janela, setJanela] = useState<"" | "pins" | "backup" | "glossario">("");
+  const [janela, setJanela] = useState<"" | "pins" | "backup" | "glossario" | "resetar">("");
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,6 +119,9 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
                 <button role="menuitem" onClick={() => { setJanela("pins"); setMenu(false); }} className="rounded-sm px-2.5 py-2 text-left hover:bg-ouro/10">
                   PINs de acesso
                 </button>
+                <button role="menuitem" onClick={() => { setJanela("resetar"); setMenu(false); }} className="rounded-sm px-2.5 py-2 text-left hover:bg-ouro/10">
+                  Resetar fichas
+                </button>
                 <button role="menuitem" onClick={() => { setJanela("backup"); setMenu(false); }} className="rounded-sm px-2.5 py-2 text-left hover:bg-ouro/10">
                   Backup da mesa
                 </button>
@@ -153,6 +157,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
         ))}
       </nav>
 
+      {janela === "resetar" && <JanelaResetar mesaId={mesa.id} onFechar={() => setJanela("")} onBackup={() => setJanela("backup")} />}
       {janela === "backup" && <JanelaBackup mesaId={mesa.id} mesaNome={mesa.nome} onFechar={() => setJanela("")} />}
       {janela === "glossario" && <JanelaGlossario onFechar={() => setJanela("")} />}
       {janela === "pins" && <JanelaPins mesaId={mesa.id} onFechar={() => setJanela("")} />}
