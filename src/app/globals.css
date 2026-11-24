@@ -368,3 +368,8 @@ body {
   transform: rotate(45deg);
   flex-shrink: 0;
 }
+/* link para uma nota que ainda não existe (estilo Obsidian) */
+.texto-lore .link-lore-novo {
+  text-decoration-style: dashed;
+  opacity: 0.75;
+}

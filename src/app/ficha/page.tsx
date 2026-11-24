@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Brasao } from "@/components/Brasao";
 import { Conexao } from "@/components/Conexao";
 import { CodiceJogador } from "@/components/codice/CodiceJogador";
+import { CadernoLore } from "@/components/caderno/CadernoLore";
 import { FichaCompleta } from "@/components/FichaCompleta";
 import { Inventario } from "@/components/Inventario";
 import { Notas } from "@/components/Notas";
@@ -30,6 +31,7 @@ export default function PaginaFicha() {
   const router = useRouter();
   const { carregando, membro, mesa, eMestre, sair, userId } = useSessao();
   const [aba, setAba] = useState<Aba>("ficha");
+  const [notasModo, setNotasModo] = useState<"lore" | "bloco">("lore");
   const dados = useMesa(mesa?.id, false);
   const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
 
@@ -103,11 +105,31 @@ export default function PaginaFicha() {
         {aba === "codice" && <CodiceJogador mesaId={mesa.id} />}
 
         {aba === "notas" && (
-          <Notas
-            key={membro.personagem_id ?? ""}
-            valor={privado?.anotacoes ?? ""}
-            onSalvar={(t) => dados.salvarNotas(membro.personagem_id!, t)}
-          />
+          <div className="grid gap-3">
+            <div className="segmentos" style={{ gridTemplateColumns: "1fr 1fr" }} role="tablist" aria-label="Notas">
+              {(["lore", "bloco"] as const).map((m) => (
+                <button
+                  key={m}
+                  role="tab"
+                  aria-selected={notasModo === m}
+                  onClick={() => setNotasModo(m)}
+                  className="titulo"
+                  style={notasModo === m ? { background: "var(--color-marinho)", color: "var(--color-pergaminho-claro)" } : undefined}
+                >
+                  {m === "lore" ? "Minha lore" : "Bloco de notas"}
+                </button>
+              ))}
+            </div>
+            {notasModo === "lore" && membro.personagem_id ? (
+              <CadernoLore mesaId={mesa.id} personagemId={membro.personagem_id} />
+            ) : (
+              <Notas
+                key={membro.personagem_id ?? ""}
+                valor={privado?.anotacoes ?? ""}
+                onSalvar={(t) => dados.salvarNotas(membro.personagem_id!, t)}
+              />
+            )}
+          </div>
         )}
       </main>
 
