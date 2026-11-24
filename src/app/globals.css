@@ -551,3 +551,10 @@ html:not([data-tema="escuro"]) body:not(:has(.tema-mestre)) .folha .trilho {
     font-size: max(16px, 1em);
   }
 }
+
+/* azul imperial com ouro, igual em qualquer fundo (não segue as cores do lugar) */
+.selo-imperial {
+  background-color: #12284a;
+  color: #e2c277;
+  border-color: #12284a;
+}

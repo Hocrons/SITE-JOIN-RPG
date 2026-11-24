@@ -34,7 +34,7 @@ export function OrdemTurnos({ mesaId, meuPersonagem }: { mesaId: string; meuPers
           Rodada <span className="numeros text-marinho">{ativo.rodada}</span>
           {vez ? `. Vez de ${vez.nome}.` : ". Aguardando o mestre começar."}
         </p>
-        {minhaVez && <p className="titulo mt-2 rounded-sm bg-marinho px-3 py-2 text-center text-lg text-ouro-claro">É a sua vez!</p>}
+        {minhaVez && <p className="titulo mt-2 selo-imperial rounded-sm px-3 py-2 text-center text-lg">É a sua vez!</p>}
       </div>
 
       <ol className="folha divide-y divide-ouro-escuro/20 px-2" aria-live="polite">
@@ -66,7 +66,7 @@ export function OrdemTurnos({ mesaId, meuPersonagem }: { mesaId: string; meuPers
                 )}
                 {p.condicoes.length > 0 && <p className="text-sm italic text-tinta-suave">{p.condicoes.join(", ")}</p>}
               </div>
-              {naVez && <span className="titulo rounded-sm bg-marinho px-2 py-0.5 text-xs text-ouro-claro">NA VEZ</span>}
+              {naVez && <span className="titulo selo-imperial rounded-sm px-2 py-0.5 text-xs">NA VEZ</span>}
               {p.iniciativa != null && <span className="numeros w-8 text-right text-tinta-suave">{p.iniciativa}</span>}
             </li>
           );

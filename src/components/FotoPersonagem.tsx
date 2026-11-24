@@ -58,7 +58,7 @@ export function FotoPersonagem({ mesaId, personagemId, nome, caminho, tamanho = 
 
   const medalhao = (
     <span
-      className="relative grid shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ouro bg-marinho text-ouro-claro shadow-[inset_0_0_0_2px_rgba(243,232,204,0.6)]"
+      className="relative grid shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ouro selo-imperial !border-ouro shadow-[inset_0_0_0_2px_rgba(243,232,204,0.6)]"
       style={{ width: tamanho, height: tamanho }}
     >
       {url ? (

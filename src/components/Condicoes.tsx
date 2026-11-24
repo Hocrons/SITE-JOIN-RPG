@@ -24,9 +24,10 @@ export function Condicoes({ lista, editavel, escuro, onChange }: Props) {
     setTexto("");
   }
 
+  // vermelho-sangue com a cor de texto do lugar: legível no papel, na mesa escura e na Área do Mestre
   const etiqueta = escuro
-    ? "border border-ouro/35 text-ouro-claro"
-    : "bg-marinho text-ouro-claro";
+    ? "border border-sangue-vivo/50 bg-sangue/20 text-nevoa"
+    : "border border-sangue-vivo/55 bg-sangue/15 text-tinta";
 
   return (
     <div>

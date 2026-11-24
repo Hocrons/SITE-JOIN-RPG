@@ -142,7 +142,7 @@ export default function Entrada() {
               ))}
             </ul>
             <button
-              className="titulo mt-3 w-full rounded-sm border border-ouro-escuro bg-marinho px-4 py-3 text-ouro-claro hover:bg-marinho-medio"
+              className="titulo mt-3 w-full rounded-sm selo-imperial border !border-ouro-escuro px-4 py-3 hover:brightness-125"
               onClick={() => setEscolha("mestre")}
             >
               Sou o mestre

@@ -164,7 +164,7 @@ function Chip({ ativo, onClick, children, pequeno }: { ativo: boolean; onClick: 
       onClick={onClick}
       aria-pressed={ativo}
       className={`shrink-0 rounded-full border px-3 ${pequeno ? "py-0.5 text-sm" : "py-1"} ${
-        ativo ? "border-marinho bg-marinho text-ouro-claro" : "border-ouro-escuro/40 text-marinho"
+        ativo ? "selo-imperial" : "border-ouro-escuro/40 text-marinho"
       }`}
     >
       {children}
