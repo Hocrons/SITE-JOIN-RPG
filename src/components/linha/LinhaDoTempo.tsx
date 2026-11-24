@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ControleVisibilidade, type Jogador } from "@/components/codice/EdicaoMestre";
 import { LeituraEntrada } from "@/components/codice/LeituraEntrada";
 import { SeloVisibilidade } from "@/components/codice/ListaCodice";
@@ -24,6 +24,8 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
   const [era, setEra] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [entradaAberta, setEntradaAberta] = useState<string | null>(null);
+  const [modo, setModo] = useState<"faixa" | "lista">("faixa");
+  const [foco, setFoco] = useState<string | null>(null);
 
   const t = escuro
     ? { titulo: "text-ouro-claro", texto: "text-nevoa/90", sutil: "text-nevoa/55", campo: "w-full rounded-sm border border-ouro/25 bg-noite px-2.5 py-1.5 text-nevoa placeholder:text-nevoa/40", cartao: "painel", espinha: "bg-ouro/35", chip: "border-ouro/30 text-ouro-claro" }
@@ -45,6 +47,70 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
   const alvos = useMemo(() => new Map(lore.entradas.map((e) => [normalizar(e.titulo), e.id])), [lore.entradas]);
   const entrada = entradaAberta ? entradaPorId.get(entradaAberta) : undefined;
 
+  function blocoEvento(ev: Evento) {
+    const indice = linha.eventos.findIndex((x) => x.id === ev.id);
+    const ligadas = linha.vinculos.filter((v) => v.evento_id === ev.id).map((v) => entradaPorId.get(v.entrada_id)).filter(Boolean);
+    const oculto = ev.visibilidade === "mestre";
+    return editando === ev.id && eMestre ? (
+      <EditorEvento
+        ev={ev}
+        linha={linha}
+        eras={eras}
+        entradas={lore.entradas}
+        jogadores={jogadores}
+        escuro={escuro}
+        aoFechar={() => setEditando(null)}
+      />
+    ) : (
+      <article className={`${t.cartao} p-3.5 ${oculto && eMestre ? "opacity-80" : ""}`}>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm italic ${t.sutil}`}>
+              {ev.data_rotulo || "Sem data"}
+              {ev.aproximada ? " (data aproximada)" : ""}
+              {ev.sessao ? <span className="not-italic">{`, sessão ${ev.sessao}`}</span> : null}
+            </p>
+            <h3 className={`titulo text-lg leading-snug ${t.titulo}`}>{ev.titulo}</h3>
+          </div>
+          {eMestre && (
+            <span className="flex shrink-0 items-center gap-1">
+              <SeloVisibilidade vis={ev.visibilidade} />
+              <button onClick={() => linha.mover(ev.id, -1)} disabled={indice === 0} className={`px-1.5 disabled:opacity-30 ${t.sutil}`} aria-label="Mais cedo" title="Mais cedo">
+                ↑
+              </button>
+              <button onClick={() => linha.mover(ev.id, 1)} disabled={indice === linha.eventos.length - 1} className={`px-1.5 disabled:opacity-30 ${t.sutil}`} aria-label="Mais tarde" title="Mais tarde">
+                ↓
+              </button>
+              <button onClick={() => setEditando(ev.id)} className={`rounded-sm border px-2 py-0.5 text-sm ${t.chip}`}>
+                Editar
+              </button>
+            </span>
+          )}
+        </div>
+        <div className="mt-1.5 grid gap-3 sm:grid-cols-[1fr_auto]">
+          {ev.descricao && (
+            <div className={t.texto}>
+              <Markdown texto={eMestre ? ev.descricao : limparParaJogador(ev.descricao)} alvos={alvos} aoAbrir={setEntradaAberta} escuro={escuro} />
+            </div>
+          )}
+          {ev.imagem_caminho && <ImagemEvento caminho={ev.imagem_caminho} titulo={ev.titulo} />}
+        </div>
+        {ligadas.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="No Códice">
+            {ligadas.map((en) => (
+              <li key={en!.id}>
+                <button onClick={() => setEntradaAberta(en!.id)} className={`flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-sm ${t.chip}`}>
+                  <span className="losango" style={{ background: TIPO[en!.tipo].cor }} aria-hidden />
+                  {en!.titulo}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+    );
+  }
+
   async function novo() {
     const ev = await linha.criar({ era: era || eras[eras.length - 1] || "" });
     if (ev) setEditando(ev.id);
@@ -60,6 +126,19 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
               Novo evento
             </button>
           )}
+        </div>
+        <div className={`grid grid-cols-2 overflow-hidden rounded-sm border ${escuro ? "border-ouro/30" : "border-ouro-escuro/40"}`} role="tablist" aria-label="Como ver">
+          {(["faixa", "lista"] as const).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={modo === m}
+              onClick={() => setModo(m)}
+              className={`titulo py-1.5 ${modo === m ? (escuro ? "bg-ouro/90 text-marinho" : "bg-marinho text-pergaminho-claro") : t.titulo}`}
+            >
+              {m === "faixa" ? "Faixa do tempo" : "Lista"}
+            </button>
+          ))}
         </div>
         {eras.length > 1 && (
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Eras">
@@ -85,6 +164,18 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
         </p>
       ) : visiveis.length === 0 ? (
         <p className={`italic ${t.sutil}`}>Nenhum evento com esse filtro.</p>
+      ) : modo === "faixa" ? (
+        <>
+          <Faixa eventos={visiveis} escuro={escuro} eMestre={eMestre} foco={foco} aoEscolher={(id) => setFoco(id === foco ? null : id)} />
+          {(() => {
+            const ev = visiveis.find((e) => e.id === foco);
+            return ev ? (
+              <div className="surgir">{blocoEvento(ev)}</div>
+            ) : (
+              <p className={`text-sm italic ${t.sutil}`}>Toque num evento da faixa para ler. Arraste para os lados para andar no tempo.</p>
+            );
+          })()}
+        </>
       ) : (
         grupos.map((g, gi) => (
           <section key={`${g.era}-${gi}`} aria-label={g.era || "Sem era"}>
@@ -97,73 +188,14 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
             <ol className="relative grid gap-3 pl-6">
               <span className={`absolute bottom-2 left-[7px] top-2 w-0.5 ${t.espinha}`} aria-hidden />
               {g.eventos.map((ev) => {
-                const indice = linha.eventos.findIndex((x) => x.id === ev.id);
-                const ligadas = linha.vinculos.filter((v) => v.evento_id === ev.id).map((v) => entradaPorId.get(v.entrada_id)).filter(Boolean);
                 const oculto = ev.visibilidade === "mestre";
                 return (
-                  <li key={ev.id} className="relative">
+                  <li key={ev.id} id={`evento-${ev.id}`} className="relative">
                     <span
                       className={`absolute -left-6 top-4 h-3.5 w-3.5 rotate-45 border-2 ${oculto ? (escuro ? "border-dashed border-ouro/60 bg-noite" : "border-dashed border-ouro-escuro bg-pergaminho-claro") : escuro ? "border-ouro bg-ouro" : "border-ouro-escuro bg-ouro"}`}
                       aria-hidden
                     />
-                    {editando === ev.id && eMestre ? (
-                      <EditorEvento
-                        ev={ev}
-                        linha={linha}
-                        eras={eras}
-                        entradas={lore.entradas}
-                        jogadores={jogadores}
-                        escuro={escuro}
-                        aoFechar={() => setEditando(null)}
-                      />
-                    ) : (
-                      <article className={`${t.cartao} p-3.5 ${oculto && eMestre ? "opacity-80" : ""}`}>
-                        <div className="flex items-start gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm italic ${t.sutil}`}>
-                              {ev.data_rotulo || "Sem data"}
-                              {ev.aproximada ? " (data aproximada)" : ""}
-                              {ev.sessao ? <span className="not-italic">{`, sessão ${ev.sessao}`}</span> : null}
-                            </p>
-                            <h3 className={`titulo text-lg leading-snug ${t.titulo}`}>{ev.titulo}</h3>
-                          </div>
-                          {eMestre && (
-                            <span className="flex shrink-0 items-center gap-1">
-                              <SeloVisibilidade vis={ev.visibilidade} />
-                              <button onClick={() => linha.mover(ev.id, -1)} disabled={indice === 0} className={`px-1.5 disabled:opacity-30 ${t.sutil}`} aria-label="Mais cedo" title="Mais cedo">
-                                ↑
-                              </button>
-                              <button onClick={() => linha.mover(ev.id, 1)} disabled={indice === linha.eventos.length - 1} className={`px-1.5 disabled:opacity-30 ${t.sutil}`} aria-label="Mais tarde" title="Mais tarde">
-                                ↓
-                              </button>
-                              <button onClick={() => setEditando(ev.id)} className={`rounded-sm border px-2 py-0.5 text-sm ${t.chip}`}>
-                                Editar
-                              </button>
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1.5 grid gap-3 sm:grid-cols-[1fr_auto]">
-                          {ev.descricao && (
-                            <div className={t.texto}>
-                              <Markdown texto={eMestre ? ev.descricao : limparParaJogador(ev.descricao)} alvos={alvos} aoAbrir={setEntradaAberta} escuro={escuro} />
-                            </div>
-                          )}
-                          {ev.imagem_caminho && <ImagemEvento caminho={ev.imagem_caminho} titulo={ev.titulo} />}
-                        </div>
-                        {ligadas.length > 0 && (
-                          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="No Códice">
-                            {ligadas.map((en) => (
-                              <li key={en!.id}>
-                                <button onClick={() => setEntradaAberta(en!.id)} className={`flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-sm ${t.chip}`}>
-                                  <span className="losango" style={{ background: TIPO[en!.tipo].cor }} aria-hidden />
-                                  {en!.titulo}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </article>
-                    )}
+                    {blocoEvento(ev)}
                   </li>
                 );
               })}
@@ -193,6 +225,121 @@ export function LinhaDoTempo({ mesaId, eMestre, escuro, jogadores = [] }: Props)
         </div>
       )}
     </div>
+  );
+}
+
+const CORES_ERA_CLARO = ["rgba(18,40,74,.07)", "rgba(155,42,31,.07)", "rgba(95,122,60,.09)", "rgba(184,145,47,.11)"];
+const CORES_ERA_ESCURO = ["rgba(169,193,238,.07)", "rgba(226,120,100,.08)", "rgba(160,200,120,.07)", "rgba(226,194,119,.09)"];
+const COLUNA = 168;
+const EIXO = 172;
+
+/** Faixa horizontal: eras como faixas de cor, eventos alternando acima e abaixo do eixo. */
+function Faixa({
+  eventos, escuro, eMestre, foco, aoEscolher,
+}: {
+  eventos: Evento[];
+  escuro?: boolean;
+  eMestre: boolean;
+  foco: string | null;
+  aoEscolher: (id: string) => void;
+}) {
+  const rolagem = useRef<HTMLDivElement>(null);
+  // roda do mouse anda para os lados
+  useEffect(() => {
+    const el = rolagem.current;
+    if (!el) return;
+    const f = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener("wheel", f, { passive: false });
+    return () => el.removeEventListener("wheel", f);
+  }, []);
+
+  const segmentos: { era: string; ini: number; n: number }[] = [];
+  eventos.forEach((e, i) => {
+    const u = segmentos[segmentos.length - 1];
+    if (u && u.era === e.era) u.n++;
+    else segmentos.push({ era: e.era, ini: i, n: 1 });
+  });
+  const cores = escuro ? CORES_ERA_ESCURO : CORES_ERA_CLARO;
+  const largura = eventos.length * COLUNA + 48;
+
+  return (
+    <div
+      ref={rolagem}
+      className={`relative overflow-x-auto rounded-sm ${escuro ? "painel" : "folha"}`}
+      role="list"
+      aria-label="Faixa do tempo"
+    >
+      <div className="relative" style={{ width: Math.max(largura, 320), height: EIXO * 2 }}>
+        {segmentos.map((sg, i) => (
+          <div
+            key={`${sg.era}-${i}`}
+            className={`absolute bottom-0 top-0 ${i > 0 ? (escuro ? "border-l border-dashed border-ouro/25" : "border-l border-dashed border-ouro-escuro/30") : ""}`}
+            style={{ left: 24 + sg.ini * COLUNA, width: sg.n * COLUNA, background: cores[i % cores.length] }}
+          >
+            {sg.era && (
+              <span className={`titulo sticky left-0 inline-block px-2.5 pt-1.5 text-sm tracking-wide ${escuro ? "text-ouro-claro/80" : "text-ouro-escuro"}`}>{sg.era}</span>
+            )}
+          </div>
+        ))}
+        <div className={`absolute left-0 right-0 h-0.5 ${escuro ? "bg-ouro/50" : "bg-ouro-escuro/60"}`} style={{ top: EIXO }} aria-hidden />
+        {eventos.map((ev, i) => {
+          const cima = i % 2 === 0;
+          const x = 24 + i * COLUNA + COLUNA / 2;
+          const oculto = eMestre && ev.visibilidade === "mestre";
+          const sel = foco === ev.id;
+          return (
+            <div key={ev.id} role="listitem">
+              <span
+                className={`absolute w-px ${escuro ? "bg-ouro/40" : "bg-ouro-escuro/50"}`}
+                style={{ left: x, top: cima ? 140 : EIXO, height: 32 }}
+                aria-hidden
+              />
+              <span
+                className={`absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 ${
+                  oculto ? (escuro ? "border-dashed border-ouro/70 bg-noite" : "border-dashed border-ouro-escuro bg-pergaminho-claro") : escuro ? "border-ouro bg-ouro" : "border-ouro-escuro bg-ouro"
+                } ${sel ? "scale-125" : ""}`}
+                style={{ left: x, top: EIXO + 1 }}
+                aria-hidden
+              />
+              <button
+                onClick={() => aoEscolher(ev.id)}
+                aria-pressed={sel}
+                className={`absolute flex flex-col overflow-hidden rounded-sm border text-left shadow-sm transition-transform ${
+                  escuro
+                    ? sel ? "border-ouro bg-noite-3" : "border-ouro/25 bg-noite-2/90 hover:border-ouro/60"
+                    : sel ? "border-marinho bg-pergaminho-claro" : "border-ouro-escuro/35 bg-pergaminho-claro/90 hover:border-ouro-escuro"
+                } ${oculto ? "border-dashed" : ""} ${sel ? "-translate-y-0.5" : ""}`}
+                style={{ left: x - (COLUNA - 14) / 2, width: COLUNA - 14, top: cima ? 34 : EIXO + 32, height: 106 }}
+              >
+                {ev.imagem_caminho && <MiniaturaEvento caminho={ev.imagem_caminho} />}
+                <span className="min-h-0 px-2 py-1.5">
+                  <span className={`block truncate text-xs italic ${escuro ? "text-nevoa/55" : "text-tinta-suave"}`}>
+                    {ev.data_rotulo || "Sem data"}
+                    {ev.aproximada ? " (aprox.)" : ""}
+                  </span>
+                  <span className={`titulo line-clamp-3 text-[0.92rem] leading-snug ${escuro ? "text-ouro-claro" : "text-marinho"}`}>{ev.titulo}</span>
+                </span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MiniaturaEvento({ caminho }: { caminho: string }) {
+  const url = useUrlArquivo(caminho);
+  return (
+    <span className="block h-9 w-full shrink-0 overflow-hidden bg-pergaminho-escuro/30">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {url && <img src={url} alt="" className="h-full w-full object-cover" />}
+    </span>
   );
 }
 
