@@ -135,8 +135,8 @@ function NoToken({
     const prop = imagem.height / imagem.width;
     let w = lado * 0.96;
     let h = w * prop;
-    if (h > lado * 1.9) {
-      h = lado * 1.9;
+    if (h > lado * 2.1) {
+      h = lado * 2.1;
       w = h / prop;
     }
     topo = lado * 0.92 - h;
@@ -189,7 +189,11 @@ function NoToken({
   const telaPx = lado * k;
   const barras = personagem && ficha && telaPx >= 18 ? montarBarras(personagem, ficha) : null;
   const comNome = telaPx >= 30 || selecionado || destacado;
-  const yBarras = Math.min(topo, 0) - px(4) - (barras ? barras.length * px(6) : 0);
+  // plaqueta sob os pés: nome e, embaixo dele, as barras (a cabeça fica livre)
+  const larguraNome = medirTexto(t.nome, fonte);
+  const larguraPlaca = Math.max(larguraNome + px(12), barras ? px(64) : 0);
+  const alturaBarra = px(3.5);
+  const alturaPlaca = fonte + px(6) + (barras ? barras.length * (alturaBarra + px(2)) + px(2) : 0);
 
   return (
     <Group
@@ -222,8 +226,8 @@ function NoToken({
         onMover(t, c, l);
       }}
     >
-      {/* área que pega o clique/toque no espaço inteiro */}
-      <Rect width={lado} height={lado} fill="rgba(0,0,0,0.001)" />
+      {/* área que pega o clique/toque: o espaço no chão e o corpo inteiro */}
+      <Rect y={Math.min(0, topo)} width={lado} height={lado - Math.min(0, topo)} fill="rgba(0,0,0,0.001)" />
       {(selecionado || arrastando) && (
         <Rect width={lado} height={lado} stroke="#e2c277" strokeWidth={px(2)} dash={[px(6), px(4)]} fill="rgba(226,194,119,0.12)" />
       )}
@@ -241,39 +245,33 @@ function NoToken({
       {figura}
       {t.oculto && <Rect width={lado} height={lado} stroke="#e8e2d4" strokeWidth={px(1.5)} dash={[px(3), px(3)]} listening={false} />}
 
-      {barras &&
-        barras.map((b, i) => (
-          <Group key={b.id} x={lado * 0.05} y={yBarras + i * px(6)}>
-            <Rect width={lado * 0.9} height={px(4.5)} fill="rgba(10,9,12,0.85)" cornerRadius={px(2)} />
-            <Rect width={lado * 0.9 * b.frac} height={px(4.5)} fill={b.cor} cornerRadius={px(2)} />
-          </Group>
-        ))}
-      {personagem?.ancora_ativa && telaPx >= 18 && (
-        <Group x={lado - px(4)} y={yBarras - px(2)}>
-          <Circle radius={px(9)} fill="#1a2440" stroke="#e2c277" strokeWidth={px(1.5)} />
-          <Text text="⚓" fontSize={px(11)} x={-px(6)} y={-px(6.5)} width={px(12)} align="center" fill="#e2c277" />
-        </Group>
-      )}
-
       {comNome && (
-        <Group x={lado / 2} y={lado * 0.98}>
+        <Group x={lado / 2} y={lado * 0.97} listening={false}>
           <Rect
-            x={-medirTexto(t.nome, fonte) / 2 - px(5)}
-            width={medirTexto(t.nome, fonte) + px(10)}
-            height={fonte + px(5)}
+            x={-larguraPlaca / 2}
+            width={larguraPlaca}
+            height={alturaPlaca}
             cornerRadius={px(3)}
-            fill="rgba(13,12,16,0.82)"
+            fill="rgba(13,12,16,0.86)"
             stroke={cor}
             strokeWidth={px(1)}
           />
-          <Text
-            x={-medirTexto(t.nome, fonte) / 2}
-            y={px(2.5)}
-            text={t.nome}
-            fontSize={fonte}
-            fontFamily={fonteDe("corpo")}
-            fill="#f1e9d6"
-          />
+          <Text x={-larguraNome / 2} y={px(3)} text={t.nome} fontSize={fonte} fontFamily={fonteDe("corpo")} fill="#f1e9d6" />
+          {barras?.map((b, i) => {
+            const w = larguraPlaca - px(10);
+            return (
+              <Group key={b.id} x={-w / 2} y={fonte + px(6) + i * (alturaBarra + px(2))}>
+                <Rect width={w} height={alturaBarra} fill="rgba(255,255,255,0.12)" cornerRadius={alturaBarra / 2} />
+                <Rect width={w * b.frac} height={alturaBarra} fill={b.cor} cornerRadius={alturaBarra / 2} />
+              </Group>
+            );
+          })}
+          {personagem?.ancora_ativa && (
+            <Group x={-larguraPlaca / 2 - px(10)} y={alturaPlaca / 2}>
+              <Circle radius={px(9)} fill="#1a2440" stroke="#e2c277" strokeWidth={px(1.5)} />
+              <Text text="⚓" fontSize={px(11)} x={-px(6)} y={-px(6.5)} width={px(12)} align="center" fill="#e2c277" />
+            </Group>
+          )}
         </Group>
       )}
     </Group>

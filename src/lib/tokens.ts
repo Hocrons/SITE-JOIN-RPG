@@ -198,14 +198,17 @@ export function useTokens(mesaId: string | null | undefined, cenaId: string | nu
 
   async function removerImagem(t: Token) {
     const antiga = t.imagem_caminho;
-    if (await salvar(t, { imagem_caminho: null }) && antiga) await supabase().storage.from("midia").remove([antiga]);
+    if ((await salvar(t, { imagem_caminho: null })) && antiga) await supabase().storage.from("midia").remove([antiga]);
   }
 
   /** Cópia ao lado (ex.: vários cultistas iguais). A imagem é copiada no Storage. */
   async function duplicar(t: Token) {
     const novo = await criar({
       cena_id: t.cena_id,
-      nome: proximoNome(t.nome, tokens.map((x) => x.nome)),
+      nome: proximoNome(
+        t.nome,
+        tokens.map((x) => x.nome),
+      ),
       faccao: t.faccao,
       tamanho: t.tamanho,
       oculto: t.oculto,
@@ -221,8 +224,18 @@ export function useTokens(mesaId: string | null | undefined, cenaId: string | nu
   }
 
   return {
-    tokens, status: todos.status, arrasto,
-    criar, salvar, mover, excluir, enviarImagem, removerImagem, duplicar, transmitirArrasto, avisar,
+    tokens,
+    status: todos.status,
+    arrasto,
+    criar,
+    salvar,
+    mover,
+    excluir,
+    enviarImagem,
+    removerImagem,
+    duplicar,
+    transmitirArrasto,
+    avisar,
   };
 }
 
@@ -237,16 +250,51 @@ function proximoNome(nome: string, existentes: string[]) {
 
 async function reduzirComTransparencia(arquivo: File, lado: number) {
   const bitmap = await createImageBitmap(arquivo);
-  const f = Math.min(1, lado / Math.max(bitmap.width, bitmap.height));
+  const r = recorteVisivel(bitmap);
+  const f = Math.min(1, lado / Math.max(r.w, r.h));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * f));
-  canvas.height = Math.max(1, Math.round(bitmap.height * f));
+  canvas.width = Math.max(1, Math.round(r.w * f));
+  canvas.height = Math.max(1, Math.round(r.h * f));
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, r.x, r.y, r.w, r.h, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   const webp = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", 0.9));
   if (webp && webp.type === "image/webp") return { blob: webp, ext: "webp" };
   const png = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
   return { blob: png!, ext: "png" };
+}
+
+/** Área com conteúdo (ignora a sobra transparente em volta da figura). */
+function recorteVisivel(b: ImageBitmap) {
+  const tudo = { x: 0, y: 0, w: b.width, h: b.height };
+  const f = Math.min(1, 400 / Math.max(b.width, b.height));
+  const w = Math.max(1, Math.round(b.width * f));
+  const h = Math.max(1, Math.round(b.height * f));
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return tudo;
+  ctx.drawImage(b, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w,
+    y0 = h,
+    x1 = -1,
+    y1 = -1;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++)
+      if (d[(y * w + x) * 4 + 3] > 16) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+  if (x1 < 0) return tudo; // tudo transparente
+  const m = 2; // margem para o brilho da facção não cortar
+  x0 = Math.max(0, x0 - m);
+  y0 = Math.max(0, y0 - m);
+  x1 = Math.min(w - 1, x1 + m);
+  y1 = Math.min(h - 1, y1 + m);
+  return { x: x0 / f, y: y0 / f, w: (x1 - x0 + 1) / f, h: (y1 - y0 + 1) / f };
 }
