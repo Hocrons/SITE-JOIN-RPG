@@ -289,7 +289,7 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
   // longe demais, só os pontos com mais ligações (e os do foco) mostram o nome, para não virar borrão
   function mostrarRotulo(n: No) {
     if (vizinhos?.has(n.id)) return true;
-    if (vista.k >= 0.7) return !vizinhos;
+    if (vista.k >= 0.7 || listaNos.length <= 25) return !vizinhos;
     return !vizinhos && n.grau >= 4;
   }
 
@@ -330,34 +330,6 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
               />
             );
           })}
-          {listaArestas.map((a) => {
-            const s = a.source as No;
-            const t = a.target as No;
-            if (!a.rotulo || !foco || (s.id !== foco && t.id !== foco)) return null;
-            const x = ((s.x ?? 0) + (t.x ?? 0)) / 2;
-            const y = ((s.y ?? 0) + (t.y ?? 0)) / 2;
-            return (
-              <text
-                key={`r${a.id}`}
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={12.5 / vista.k}
-                fontStyle="italic"
-                fontFamily="var(--font-serifa)"
-                fontWeight={500}
-                fill={c.texto}
-                stroke={c.fundoRotulo}
-                strokeWidth={2.5 / vista.k}
-                strokeLinejoin="round"
-                paintOrder="stroke"
-                pointerEvents="none"
-              >
-                {a.rotulo}
-              </text>
-            );
-          })}
           {listaNos.map((n) => {
             const r = raio(n);
             const apagado = vizinhos && !vizinhos.has(n.id);
@@ -385,30 +357,48 @@ export function Grafo({ nos, arestas, selecionado, aoSelecionar, escuro, altura 
                   strokeWidth={n.oculto ? 2 : 1.5}
                   strokeDasharray={n.oculto ? "3 2" : undefined}
                 />
-                {mostrarRotulo(n) && (
-                  <text
-                    y={r + 4 + 14 / vista.k}
-                    textAnchor="middle"
-                    fontSize={14 / vista.k}
-                    fontFamily="var(--font-serifa)"
-                    fontWeight={600}
-                    fill={c.texto}
-                    stroke={c.fundoRotulo}
-                    strokeWidth={2 / vista.k}
-                    strokeOpacity={0.85}
-                    strokeLinejoin="round"
-                    paintOrder="stroke"
-                    pointerEvents="none"
-                    style={{ textRendering: "geometricPrecision" }}
-                  >
-                    {n.rotulo.length > 24 ? n.rotulo.slice(0, 23) + "…" : n.rotulo}
-                  </text>
-                )}
               </g>
             );
           })}
         </g>
       </svg>
+      {/* Nomes em HTML por cima do desenho: legíveis também quando o celular força o modo escuro */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        {listaArestas.map((a) => {
+          const s0 = a.source as No;
+          const t0 = a.target as No;
+          if (!a.rotulo || !foco || (s0.id !== foco && t0.id !== foco)) return null;
+          const x = (((s0.x ?? 0) + (t0.x ?? 0)) / 2) * vista.k + vista.x;
+          const y = (((s0.y ?? 0) + (t0.y ?? 0)) / 2) * vista.k + vista.y;
+          return (
+            <span
+              key={`r${a.id}`}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-sm px-1 text-[0.8rem] italic leading-tight ${escuro ? "bg-noite/80 text-nevoa" : "bg-pergaminho-claro/85 text-tinta"}`}
+              style={{ left: x, top: y }}
+            >
+              {a.rotulo}
+            </span>
+          );
+        })}
+        {listaNos.map((n) => {
+          if (!mostrarRotulo(n)) return null;
+          const apagado = vizinhos && !vizinhos.has(n.id);
+          const x = (n.x ?? 0) * vista.k + vista.x;
+          const y = (n.y ?? 0) * vista.k + vista.y + raio(n) * vista.k + 3;
+          const forte = n.id === selecionado || n.id === sobre;
+          return (
+            <span
+              key={`n${n.id}`}
+              className={`absolute -translate-x-1/2 whitespace-nowrap rounded-sm px-1 text-[0.86rem] leading-tight ${
+                escuro ? "bg-noite/70 text-nevoa" : "bg-pergaminho-claro/75 text-tinta"
+              } ${forte ? "font-semibold" : ""}`}
+              style={{ left: x, top: y, opacity: apagado ? 0.35 : 1 }}
+            >
+              {n.rotulo.length > 24 ? n.rotulo.slice(0, 23) + "…" : n.rotulo}
+            </span>
+          );
+        })}
+      </div>
       <div className="absolute right-2 top-2 flex flex-col gap-1">
         {[
           { r: "Aproximar", t: "+", f: () => zoom(1.3) },
