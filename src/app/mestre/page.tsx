@@ -382,6 +382,7 @@ function AjusteStatus({
   onFechar: () => void;
 }) {
   const [valor, setValor] = useState("");
+  const [tempTexto, setTempTexto] = useState("");
   const n = Math.abs(parseInt(valor, 10)) || 0;
   const passo = "numeros rounded-sm border border-ouro/20 py-2 hover:bg-ouro/10";
   const [menos, mais] = campo === "pv_atual" ? ["Dano", "Cura"] : campo === "san_atual" ? ["Perde", "Recupera"] : ["Gasta", "Recupera"];
@@ -427,17 +428,35 @@ function AjusteStatus({
         </button>
       </form>
       {temp != null && (
-        <div className="flex items-center gap-2 text-sm text-nevoa/70">
-          PV temporário <span className="numeros text-ouro-claro">{temp}</span>
-          <button onClick={() => onTemp(temp + (n || 5))} className="rounded-sm border border-ouro/25 px-2 py-0.5 text-ouro-claro">
-            +{n || 5}
+        <form
+          className="flex flex-wrap items-center gap-2 text-sm text-nevoa/70"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (tempTexto === "") return;
+            onTemp(Math.max(0, parseInt(tempTexto, 10) || 0));
+            setTempTexto("");
+          }}
+        >
+          <span>
+            PV temporário <span className="numeros text-base text-ouro-claro">{temp}</span>
+          </span>
+          <input
+            inputMode="numeric"
+            value={tempTexto}
+            onChange={(e) => setTempTexto(e.target.value.replace(/[^\d]/g, ""))}
+            placeholder="novo"
+            aria-label="PV temporário exato"
+            className="numeros w-20 rounded-sm border border-ouro/25 bg-noite px-2 py-1 text-center text-base text-nevoa placeholder:text-nevoa/30"
+          />
+          <button className="rounded-sm border border-ouro/30 px-2.5 py-1 text-ouro-claro disabled:opacity-40" disabled={tempTexto === ""}>
+            Definir
           </button>
           {temp > 0 && (
-            <button onClick={() => onTemp(0)} className="text-nevoa/55 underline underline-offset-2">
+            <button type="button" onClick={() => onTemp(0)} className="text-nevoa/55 underline underline-offset-2">
               zerar
             </button>
           )}
-        </div>
+        </form>
       )}
       <p className="text-sm text-nevoa/45">
         Atual: <span className="numeros">{atual}</span>.{campo === "pv_atual" ? " Dano gasta o PV temporário primeiro." : ""}
