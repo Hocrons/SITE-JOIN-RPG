@@ -65,6 +65,13 @@ export function useQuadro(mesaId: string | null | undefined) {
   const cartoes = useAoVivo<L<Cartao>>("quadro_cartoes", mesaId, porId);
   const ligacoes = useAoVivo<L<Ligacao>>("quadro_ligacoes", mesaId, porId);
 
+  const recarregar = useRef<() => void>(() => {});
+  recarregar.current = () => {
+    arquivos.recarregar();
+    cartoes.recarregar();
+    ligacoes.recarregar();
+  };
+
   // posições "ao vivo" de quem está arrastando agora (de outros aparelhos)
   const [aoVivo, setAoVivo] = useState<Record<string, { x: number; y: number }>>({});
   const canal = useRef<ReturnType<ReturnType<typeof supabase>["channel"]> | null>(null);
@@ -81,7 +88,13 @@ export function useQuadro(mesaId: string | null | undefined) {
       })
       .subscribe();
     canal.current = c;
+    const aoVoltar = () => {
+      if (document.visibilityState !== "visible") return;
+      recarregar.current();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
     return () => {
+      document.removeEventListener("visibilitychange", aoVoltar);
       sb.removeChannel(c);
       canal.current = null;
     };
@@ -161,7 +174,12 @@ export function useQuadro(mesaId: string | null | undefined) {
       .insert({ mesa_id: mesaId, origem_id: origem, destino_id: destino })
       .select()
       .single();
-    if (error) return alert(error.message);
+    if (error) {
+      // o quadro deste aparelho pode estar desatualizado: busca de novo antes de avisar
+      cartoes.recarregar();
+      ligacoes.recarregar();
+      return alert(`${error.message}\n\nO quadro foi atualizado; tente de novo.`);
+    }
     ligacoes.setLinhas((l) => (l.some((x) => x.id === data.id) ? l : [...l, data as L<Ligacao>]));
   }
 
