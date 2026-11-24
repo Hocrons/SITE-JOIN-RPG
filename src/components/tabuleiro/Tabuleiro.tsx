@@ -64,6 +64,8 @@ interface Props {
   faixa?: React.ReactNode;
   /** Centraliza a vista neste ponto (px do mapa) sempre que `n` mudar. */
   foco?: { x: number; y: number; n: number } | null;
+  /** Jogador com névoa ligada: usa a versão do mapa com a névoa já pintada. */
+  versaoJogador?: boolean;
   /** Clique/toque no mapa fora de qualquer token. */
   onClicarFundo?: () => void;
   /** Informa a vista atual (para saber o centro da tela). */
@@ -78,13 +80,13 @@ const limitar = (k: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, k));
  * Tabuleiro em canvas (Konva). Unidades do mundo = pixels do mapa original.
  * Abre pelo mapa leve e, no computador, troca pelo otimizado quando ele chega.
  */
-export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco, ferramenta, nevoa, pings, reguas, onPing, faixa }: Props) {
+export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco, ferramenta, nevoa, pings, reguas, onPing, faixa, versaoJogador = false }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
   const [vista, setVista] = useState<Vista>({ x: 0, y: 0, k: 0.2 });
   const [telaCheia, setTelaCheia] = useState(false);
-  const imagem = useImagemMapa(cena);
+  const imagem = useImagemMapa(cena, versaoJogador);
   const largura = cena.mapa_largura ?? 0;
   const alturaMapa = cena.mapa_altura ?? 0;
   const enquadradoPara = useRef<string | null>(null);
@@ -496,47 +498,54 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
   );
 }
 
-/** Abre pelo mapa leve; no computador, troca pelo otimizado quando ele termina de carregar. */
-function useImagemMapa(cena: Cena) {
-  const urlLeve = useUrlArquivo(cena.mapa_leve_caminho ?? cena.mapa_caminho);
+/**
+ * Abre pelo mapa leve; no computador, troca pelo otimizado quando ele termina de carregar.
+ * Quando o arquivo muda (nova versão da névoa), continua mostrando o anterior até o novo chegar.
+ */
+function useImagemMapa(cena: Cena, versaoJogador: boolean) {
+  const leveCam = versaoJogador ? cena.mapa_jogador_leve_caminho : (cena.mapa_leve_caminho ?? cena.mapa_caminho);
+  const boaCam = versaoJogador ? cena.mapa_jogador_caminho : cena.mapa_caminho;
+  const urlLeve = useUrlArquivo(leveCam ?? null);
   const celular = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches && window.innerWidth < 900;
-  const urlBoa = useUrlArquivo(celular ? null : cena.mapa_caminho);
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const urlBoa = useUrlArquivo(celular ? null : (boaCam ?? null));
+  const chave = `${leveCam}|${boaCam}`;
+  const chaveAtual = useRef(chave);
+  chaveAtual.current = chave;
+  const [estado, setEstado] = useState<{ img: HTMLImageElement; chave: string; q: number } | null>(null);
 
   useEffect(() => {
-    setImg(null);
-  }, [cena.id, cena.mapa_caminho]);
+    setEstado(null);
+  }, [cena.id, versaoJogador]);
 
   useEffect(() => {
-    if (!urlLeve) return;
-    let vivo = true;
-    const i = new window.Image();
-    i.crossOrigin = "anonymous";
-    i.decoding = "async";
-    i.onload = () => vivo && setImg((atual) => atual ?? i);
-    i.src = urlLeve;
+    const pares: [string | null, number][] = [
+      [urlLeve, 1],
+      [urlBoa, 2],
+    ];
+    const vivos: HTMLImageElement[] = [];
+    for (const [url, q] of pares) {
+      if (!url) continue;
+      const k = chave;
+      const i = new window.Image();
+      i.crossOrigin = "anonymous";
+      i.decoding = "async";
+      i.onload = () => {
+        (i.decode ? i.decode() : Promise.resolve())
+          .catch(() => {})
+          .finally(() => {
+            if (chaveAtual.current !== k) return; // chegou atrasado
+            setEstado((e) => (e && e.chave === k && e.q >= q ? e : { img: i, chave: k, q }));
+          });
+      };
+      i.src = url;
+      vivos.push(i);
+    }
     return () => {
-      vivo = false;
+      for (const i of vivos) i.onload = null;
     };
-  }, [urlLeve]);
+  }, [urlLeve, urlBoa, chave]);
 
-  useEffect(() => {
-    if (!urlBoa) return;
-    let vivo = true;
-    const i = new window.Image();
-    i.crossOrigin = "anonymous";
-    i.decoding = "async";
-    i.onload = () => {
-      if (!vivo) return;
-      (i.decode ? i.decode() : Promise.resolve()).catch(() => {}).finally(() => vivo && setImg(i));
-    };
-    i.src = urlBoa;
-    return () => {
-      vivo = false;
-    };
-  }, [urlBoa]);
-
-  return img;
+  return estado?.img ?? null;
 }
 
 function DesenhoRegua({ r, k, cena }: { r: Regua; k: number; cena: Cena }) {

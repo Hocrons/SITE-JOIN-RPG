@@ -97,8 +97,70 @@ export function useNevoa(cena: Cena | null | undefined, eMestre: boolean) {
     enviado.current = caminho;
     const { error: e2 } = await sb.from("cenas").update({ nevoa_caminho: caminho }).eq("id", cena.id);
     if (!e2 && antigo && antigo !== caminho) await sb.storage.from("midia").remove([antigo]);
+    if (cena.nevoa_ativa) await gerarRef.current();
     setSalvando(false);
   }, [canvas, cena, eMestre]);
+
+  // ---------- versão dos jogadores (mapa com a névoa já pintada) ----------
+  const imagensMapa = useRef<{ chave: string; boa: HTMLImageElement; leve: HTMLImageElement | null } | null>(null);
+  const gerando = useRef<Promise<void> | null>(null);
+  const deNovo = useRef(false);
+  const cenaRef = useRef(cena);
+  cenaRef.current = cena;
+
+  const gerar = useCallback(async () => {
+    // uma geração por vez; se pedirem no meio, roda de novo no fim com a névoa mais nova
+    if (gerando.current) {
+      deNovo.current = true;
+      return gerando.current;
+    }
+    const tarefa = (async () => {
+      do {
+        deNovo.current = false;
+        const c = cenaRef.current;
+        if (!c || !canvas || !c.mapa_caminho || !eMestre) return;
+        const sb = supabase();
+        const chave = `${c.mapa_caminho}|${c.mapa_leve_caminho}`;
+        if (imagensMapa.current?.chave !== chave) {
+          const [boa, leve] = await Promise.all([carregar(c.mapa_caminho), c.mapa_leve_caminho ? carregar(c.mapa_leve_caminho) : Promise.resolve(null)]);
+          if (!boa) return;
+          imagensMapa.current = { chave, boa, leve };
+        }
+        const { boa, leve } = imagensMapa.current!;
+        const ts = Date.now();
+        const subir = async (img: HTMLImageElement, nome: string) => {
+          const blob = await queimar(img, canvas);
+          if (!blob) return null;
+          const caminho = `cenas/${c.mesa_id}/${c.id}/jog-${ts}-${nome}.webp`;
+          const { error } = await sb.storage.from("midia").upload(caminho, blob, { contentType: blob.type, cacheControl: "31536000" });
+          return error ? null : caminho;
+        };
+        const nova = await subir(boa, "mapa");
+        const novaLeve = leve ? await subir(leve, "leve") : nova;
+        if (!nova) return;
+        const antigos = [c.mapa_jogador_caminho, c.mapa_jogador_leve_caminho].filter((x): x is string => !!x && x !== nova && x !== novaLeve);
+        const { error } = await sb
+          .from("cenas")
+          .update({ mapa_jogador_caminho: nova, mapa_jogador_leve_caminho: novaLeve, mapa_jogador_origem: c.mapa_caminho })
+          .eq("id", c.id);
+        if (!error && antigos.length) await sb.storage.from("midia").remove(antigos);
+      } while (deNovo.current);
+    })();
+    gerando.current = tarefa.finally(() => {
+      gerando.current = null;
+    });
+    return gerando.current;
+  }, [canvas, eMestre]);
+  const gerarRef = useRef(gerar);
+  gerarRef.current = gerar;
+
+  // névoa ligada sem versão dos jogadores (ou feita de um mapa antigo): faz agora
+  useEffect(() => {
+    if (!eMestre || !cena?.nevoa_ativa || !cena.mapa_caminho || !canvas || versao === 0) return;
+    if (cena.mapa_jogador_origem === cena.mapa_caminho && cena.mapa_jogador_caminho) return;
+    gerarRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eMestre, cena?.nevoa_ativa, cena?.mapa_caminho, cena?.mapa_jogador_origem, canvas, versao > 0]);
 
   const enviarRef = useRef(enviar);
   enviarRef.current = enviar;
@@ -172,3 +234,29 @@ export function useNevoa(cena: Cena | null | undefined, eMestre: boolean) {
 }
 
 export type DadosNevoa = ReturnType<typeof useNevoa>;
+
+async function carregar(caminho: string): Promise<HTMLImageElement | null> {
+  const { data } = await supabase().storage.from("midia").createSignedUrl(caminho, 600);
+  if (!data?.signedUrl) return null;
+  return new Promise((ok) => {
+    const i = new window.Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => ok(i);
+    i.onerror = () => ok(null);
+    i.src = data.signedUrl;
+  });
+}
+
+/** O mapa com a névoa pintada por cima (o que o jogador pode baixar). */
+async function queimar(mapa: HTMLImageElement, mascara: HTMLCanvasElement): Promise<Blob | null> {
+  const c = document.createElement("canvas");
+  c.width = mapa.naturalWidth;
+  c.height = mapa.naturalHeight;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(mapa, 0, 0);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(mascara, 0, 0, c.width, c.height);
+  const webp = await new Promise<Blob | null>((r) => c.toBlob(r, "image/webp", 0.85));
+  if (webp?.type === "image/webp") return webp;
+  return new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+}

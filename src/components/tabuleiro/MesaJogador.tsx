@@ -101,6 +101,7 @@ export function MesaJogador({
             {meu && <BotaoFoco onClick={() => focar(meu)} />}
           </>
         }
+        versaoJogador={nevoa.ativa}
         nevoa={nevoa.canvas && nevoa.ativa ? { canvas: nevoa.canvas, versao: nevoa.versao, opacidade: 1 } : null}
         tokens={{
           tokens: visiveis,
