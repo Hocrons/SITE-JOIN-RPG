@@ -3,10 +3,8 @@
 import { Nome } from "@/components/Nome";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Brasao } from "@/components/Brasao";
 import { Condicoes } from "@/components/Condicoes";
-import { Conexao } from "@/components/Conexao";
-import { NavMestre } from "@/components/NavMestre";
+import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { useAoVivo } from "@/lib/aoVivo";
 import {
   descreverIniciativa, ordenarTurnos, porIniciativa, rolarIniciativa, useCombateAtivo,
@@ -189,17 +187,8 @@ export default function Combate() {
   const vez = lista.find((p) => p.id === ativo?.vez_id);
 
   return (
-    <main className="tema-mestre">
-      <div className="mx-auto max-w-7xl px-5 py-5">
-        <header className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Brasao tamanho={38} />
-          <div className="mr-auto">
-            <h1 className="titulo text-2xl text-ouro-claro">{mesa.nome}</h1>
-            <p className="text-sm italic text-nevoa/60">Combate e iniciativa</p>
-          </div>
-          <NavMestre emCombate={!!ativo} />
-          <Conexao status={participantes.status} escuro />
-        </header>
+    <CascaMestre subtitulo="Combate e iniciativa">
+      <div className="">
 
         {!ativo ? (
           <NovoCombate onIniciar={iniciar} />
@@ -313,7 +302,7 @@ export default function Combate() {
           </div>
         )}
       </div>
-    </main>
+    </CascaMestre>
   );
 }
 

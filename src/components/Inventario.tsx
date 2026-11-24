@@ -163,7 +163,10 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                   <li key={i.id} className="py-2">
                     <div className="flex items-start gap-2">
                       <button className="min-w-0 flex-1 text-left" onClick={() => setAberto(exp ? null : i.id)} aria-expanded={exp}>
-                        <span className="titulo text-marinho">
+                        <span className="titulo flex items-center gap-1.5 text-marinho">
+                          {corElemento(c?.dados.elemento) && (
+                            <span className="losango" style={{ background: corElemento(c?.dados.elemento)! }} title={String(c?.dados.elemento)} aria-hidden />
+                          )}
                           {i.nome}
                           {i.quantidade > 1 && <span className="numeros ml-1 text-tinta-suave">×{i.quantidade}</span>}
                         </span>
@@ -362,4 +365,15 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
 
 function normal(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+/** Cor de cada elemento do Outro Lado (Sangue, Morte, Conhecimento, Energia, Medo). */
+function corElemento(e: unknown): string | null {
+  const n = normal(String(e ?? ""));
+  if (n.startsWith("sangue")) return "var(--color-el-sangue)";
+  if (n.startsWith("morte")) return "var(--color-el-morte)";
+  if (n.startsWith("conhecimento")) return "var(--color-el-conhecimento)";
+  if (n.startsWith("energia")) return "var(--color-el-energia)";
+  if (n.startsWith("medo")) return "var(--color-el-medo)";
+  return null;
 }

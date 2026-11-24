@@ -1,19 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { BarraStatus } from "@/components/BarraStatus";
-import { Brasao } from "@/components/Brasao";
+import { useState } from "react";
 import { Condicoes } from "@/components/Condicoes";
-import { Conexao } from "@/components/Conexao";
 import { camposVisiveis } from "@/components/FichaCompleta";
 import { FotoPersonagem } from "@/components/FotoPersonagem";
-import { NavMestre } from "@/components/NavMestre";
-import { useCombateAtivo } from "@/lib/combate";
+import { OrdemTurnos } from "@/components/OrdemTurnos";
 import { Rolador } from "@/components/Rolador";
-import { JanelaBackup } from "@/components/mestre/JanelaBackup";
-import { alerta, descricaoPersonagem, fichaAtiva, varianteAtiva } from "@/lib/regras";
+import { CascaMestre } from "@/components/mestre/CascaMestre";
+import { useCombateAtivo } from "@/lib/combate";
+import { alerta, descricaoPersonagem, fichaAtiva, pct, varianteAtiva } from "@/lib/regras";
 import { useSessao } from "@/lib/sessao";
 import { supabase } from "@/lib/supabase";
 import type { Personagem } from "@/lib/tipos";
@@ -37,28 +33,31 @@ async function rpc(nome: string, args: Record<string, unknown>) {
   return data;
 }
 
+type Dados = ReturnType<typeof useMesa>;
+type Lado = "dados" | "combate" | "registro";
+
 export default function Escudo() {
-  const router = useRouter();
-  const { carregando, membro, mesa, eMestre, sair } = useSessao();
+  const { mesa } = useSessao();
   const dados = useMesa(mesa?.id, true);
+  return (
+    <CascaMestre subtitulo="Escudo do Mestre" status={dados.personagens.status}>
+      {mesa && <ConteudoEscudo mesaId={mesa.id} ancoraGlobal={mesa.ancora_global} dados={dados} />}
+    </CascaMestre>
+  );
+}
+
+function ConteudoEscudo({ mesaId, ancoraGlobal, dados }: { mesaId: string; ancoraGlobal: boolean; dados: Dados }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [pinsAbertos, setPinsAbertos] = useState(false);
-  const [backupAberto, setBackupAberto] = useState(false);
-  const [dadosAbertos, setDadosAbertos] = useState(false);
-  const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
-
-  useEffect(() => {
-    if (carregando) return;
-    if (!membro) router.replace("/");
-    else if (!eMestre) router.replace("/ficha");
-  }, [carregando, membro, eMestre, router]);
-
-  if (!mesa || !eMestre) {
-    return <main className="tema-mestre grid place-items-center italic text-nevoa/60">Abrindo o Escudo…</main>;
-  }
+  const [lado, setLado] = useState<Lado>("dados");
+  const [movel, setMovel] = useState<"mesa" | Lado>("mesa");
+  const { ativo: combate } = useCombateAtivo(mesaId);
 
   const pjs = dados.personagens.linhas.filter((p) => p.tipo === "pj" && !p.arquivado);
   const sel = [...selecionados];
+  const sobAncora = pjs.filter((p) => p.ancora_ativa);
+
+  const ancora = (ativa: boolean, ids: string[] | null, modo: "zona" | "marca" = "zona") =>
+    rpc("ancora_definir", { p_mesa: mesaId, p_ativa: ativa, p_personagens: ids, p_modo: modo });
 
   function alternar(id: string) {
     setSelecionados((s) => {
@@ -69,320 +68,404 @@ export default function Escudo() {
     });
   }
 
-  const ancora = (ativa: boolean, ids: string[] | null, modo: "zona" | "marca" = "zona") =>
-    rpc("ancora_definir", { p_mesa: mesa.id, p_ativa: ativa, p_personagens: ids, p_modo: modo });
-
   async function salvarGrupo() {
     const nome = prompt("Nome do grupo (ex.: Equipe da floresta):");
     if (!nome?.trim()) return;
-    const { error } = await supabase()
-      .from("grupos_ancora")
-      .insert({ mesa_id: mesa!.id, nome: nome.trim(), personagem_ids: sel });
+    const { error } = await supabase().from("grupos_ancora").insert({ mesa_id: mesaId, nome: nome.trim(), personagem_ids: sel });
     if (error) alert(error.message);
   }
 
-  async function apagarGrupo(id: string, nome: string) {
-    if (!confirm(`Apagar o grupo "${nome}"? Os personagens não são afetados.`)) return;
-    const { error } = await supabase().from("grupos_ancora").delete().eq("id", id);
-    if (error) alert(error.message);
-  }
+  const lateral = (qual: Lado) =>
+    qual === "dados" ? (
+      <Rolador mesaId={mesaId} personagemId={null} eMestre escuro />
+    ) : qual === "combate" ? (
+      <div className="grid gap-3">
+        <OrdemTurnos mesaId={mesaId} meuPersonagem={null} />
+        <Link href="/mestre/combate" className="botao-ouro py-2 text-center">
+          {combate ? "Abrir o painel de combate" : "Começar um combate"}
+        </Link>
+      </div>
+    ) : (
+      <Registro dados={dados} />
+    );
 
   return (
-    <main className="tema-mestre">
-      <div className="mx-auto max-w-7xl px-5 py-5">
-        <header className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Brasao tamanho={38} />
-          <div className="mr-auto">
-            <h1 className="titulo text-2xl text-ouro-claro">{mesa.nome}</h1>
-            <p className="text-sm italic text-nevoa/60">Escudo do Mestre · código {mesa.codigo}</p>
-          </div>
-          <NavMestre emCombate={!!combateAtivo} />
-          <Conexao status={dados.personagens.status} escuro />
-          <button onClick={() => setBackupAberto(true)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
-            Backup
+    <>
+      {/* troca de painel no celular */}
+      <div className="mb-3 grid grid-cols-4 overflow-hidden rounded-sm border border-ouro/25 lg:hidden" role="tablist" aria-label="Escudo">
+        {(["mesa", "dados", "combate", "registro"] as const).map((m) => (
+          <button
+            key={m}
+            role="tab"
+            aria-selected={movel === m}
+            onClick={() => setMovel(m)}
+            className={`relative py-2 text-[0.95rem] ${movel === m ? "bg-ouro/90 text-marinho" : "text-nevoa/75"}`}
+          >
+            {{ mesa: "Mesa", dados: "Dados", combate: "Combate", registro: "Registro" }[m]}
+            {m === "combate" && combate && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-sangue-vivo" />}
           </button>
-          <button onClick={() => setPinsAbertos(true)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10">
-            PINs de acesso
-          </button>
-          <button onClick={sair} className="text-sm text-nevoa/60 underline underline-offset-2 hover:text-nevoa">
-            Sair da mesa
-          </button>
-        </header>
-
-        {/* Âncora */}
-        <section className="painel mb-4 grid gap-3 p-3" aria-label="Âncora">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => ancora(!mesa.ancora_global, null)}
-              aria-pressed={mesa.ancora_global}
-              className={
-                mesa.ancora_global
-                  ? "titulo rounded-sm border border-ardosia bg-ardosia/30 px-4 py-2 text-nevoa"
-                  : "botao-ouro px-4 py-2"
-              }
-            >
-              ⚓ {mesa.ancora_global ? "Desligar a Âncora para todos" : "Ligar a Âncora para todos"}
-            </button>
-            <button
-              onClick={() => rpc("desfazer_ultima", { p_mesa: mesa.id })}
-              className="rounded-sm border border-ouro/35 px-3 py-2 text-ouro-claro hover:bg-ouro/10"
-            >
-              ↶ Desfazer a última mudança
-            </button>
-            <span className="ml-auto text-sm italic text-nevoa/55">
-              {sel.length === 0
-                ? "Marque personagens nos cartões para agir só neles."
-                : `${sel.length} selecionado${sel.length > 1 ? "s" : ""}`}
-            </span>
-          </div>
-
-          {sel.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-ouro/15 pt-3">
-              <span className="text-sm text-nevoa/70">Zona / Pulso nos selecionados:</span>
-              <button onClick={() => ancora(true, sel)} className="rounded-sm bg-ouro/90 px-3 py-1.5 text-sm text-marinho hover:bg-ouro-claro">
-                Ligar
-              </button>
-              <button onClick={() => ancora(false, sel)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro">
-                Desligar
-              </button>
-              <button onClick={salvarGrupo} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro">
-                Salvar como grupo
-              </button>
-              <button onClick={() => setSelecionados(new Set())} className="text-sm text-nevoa/60 underline">
-                Limpar seleção
-              </button>
-            </div>
-          )}
-
-          {dados.grupos.linhas.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-ouro/15 pt-3">
-              <span className="text-sm text-nevoa/70">Grupos salvos:</span>
-              {dados.grupos.linhas.map((g) => (
-                <span key={g.id} className="flex items-center overflow-hidden rounded-sm border border-ouro/30 text-sm">
-                  <button
-                    onClick={() => setSelecionados(new Set(g.personagem_ids))}
-                    className="px-2.5 py-1 text-ouro-claro hover:bg-ouro/10"
-                    title="Selecionar este grupo"
-                  >
-                    {g.nome}
-                  </button>
-                  <button onClick={() => ancora(true, g.personagem_ids)} className="border-l border-ouro/20 px-2 py-1 hover:bg-ouro/10" title="Ligar a Âncora neste grupo">
-                    ⚓
-                  </button>
-                  <button onClick={() => ancora(false, g.personagem_ids)} className="border-l border-ouro/20 px-2 py-1 text-nevoa/60 hover:bg-ouro/10" title="Desligar neste grupo">
-                    ○
-                  </button>
-                  <button onClick={() => apagarGrupo(g.id, g.nome)} className="border-l border-ouro/20 px-2 py-1 text-nevoa/40 hover:text-pv-vivo" aria-label={`Apagar grupo ${g.nome}`}>
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Personagens */}
-        <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {pjs.map((p) => (
-            <CartaoEscudo
-              key={p.id}
-              p={p}
-              dados={dados}
-              selecionado={selecionados.has(p.id)}
-              onSelecionar={() => alternar(p.id)}
-              onMarca={() => ancora(!p.ancora_ativa, [p.id], "marca")}
-            />
-          ))}
-        </div>
-
-        {/* Registro */}
-        <section className="painel mt-5 p-4">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="titulo text-lg text-ouro-claro">Registro de mudanças</h2>
-            <span className="text-sm italic text-nevoa/45">o desfazer reverte o último bloco</span>
-          </div>
-          <ol className="max-h-72 space-y-1 overflow-auto">
-            {dados.log.linhas.slice(0, 60).map((l) => (
-              <li key={l.id} className={`flex gap-3 ${l.desfeito ? "line-through opacity-40" : ""}`}>
-                <time className="numeros w-14 shrink-0 text-sm text-nevoa/50">
-                  {new Date(l.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </time>
-                <span>
-                  <b className="font-semibold text-ouro-claro">{l.autor}</b> mudou {NOME_CAMPO[l.campo] ?? l.campo} de{" "}
-                  {l.personagem_nome}: <span className="numeros">{valorLog(l.antes)}</span> →{" "}
-                  <span className="numeros">{valorLog(l.depois)}</span>
-                </span>
-              </li>
-            ))}
-            {dados.log.linhas.length === 0 && <li className="italic text-nevoa/50">Nenhuma mudança ainda.</li>}
-          </ol>
-        </section>
+        ))}
       </div>
 
-      <button
-        onClick={() => setDadosAbertos((x) => !x)}
-        aria-expanded={dadosAbertos}
-        className="botao-ouro fixed bottom-5 right-5 z-30 px-5 py-3 shadow-lg"
-      >
-        {dadosAbertos ? "Fechar dados" : "⚀ Dados"}
-      </button>
-      {dadosAbertos && (
-        <aside
-          className="fixed inset-y-0 right-0 z-20 w-full max-w-md overflow-y-auto border-l border-ouro/25 bg-noite/97 px-4 pb-24 pt-5 shadow-2xl backdrop-blur"
-          aria-label="Dados do mestre"
-        >
-          <h2 className="titulo mb-3 text-xl text-ouro-claro">Dados</h2>
-          <Rolador mesaId={mesa.id} personagemId={null} eMestre escuro />
-        </aside>
-      )}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className={`grid gap-3 ${movel === "mesa" ? "" : "hidden lg:grid"}`}>
+          {/* Âncora */}
+          <section
+            className={`painel flex flex-wrap items-center gap-2 p-2.5 ${ancoraGlobal ? "border-ardosia" : ""}`}
+            aria-label="Âncora"
+          >
+            <span className="flex items-center gap-2 px-1">
+              <span className={`h-2.5 w-2.5 rounded-full ${ancoraGlobal || sobAncora.length ? "bg-ardosia shadow-[0_0_0_3px_rgba(111,118,132,.35)]" : "bg-pd-vivo"}`} aria-hidden />
+              <span className="text-nevoa/85">
+                {ancoraGlobal
+                  ? "Âncora ligada para todos"
+                  : sobAncora.length
+                    ? `Âncora em ${sobAncora.map((p) => p.nome.split(" ")[0]).join(", ")}`
+                    : "Âncora desligada"}
+              </span>
+            </span>
+            <span className="ml-auto flex flex-wrap items-center gap-1.5">
+              {sel.length > 0 ? (
+                <>
+                  <span className="text-sm text-nevoa/60">{sel.length} selecionado{sel.length > 1 ? "s" : ""}:</span>
+                  <button onClick={() => ancora(true, sel)} className="rounded-sm bg-ouro/90 px-3 py-1.5 text-sm text-marinho">
+                    Ligar
+                  </button>
+                  <button onClick={() => ancora(false, sel)} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro">
+                    Desligar
+                  </button>
+                  <button onClick={salvarGrupo} className="rounded-sm border border-ouro/35 px-3 py-1.5 text-sm text-ouro-claro">
+                    Salvar grupo
+                  </button>
+                  <button onClick={() => setSelecionados(new Set())} className="px-1.5 text-sm text-nevoa/55 underline underline-offset-2">
+                    Limpar
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => ancora(!ancoraGlobal, null)}
+                  aria-pressed={ancoraGlobal}
+                  className={ancoraGlobal ? "rounded-sm border border-ardosia bg-ardosia/30 px-3 py-1.5 text-nevoa" : "botao-ouro px-3 py-1.5"}
+                >
+                  {ancoraGlobal ? "Desligar para todos" : "Ligar para todos"}
+                </button>
+              )}
+              <button
+                onClick={() => rpc("desfazer_ultima", { p_mesa: mesaId })}
+                className="rounded-sm border border-ouro/30 px-3 py-1.5 text-sm text-ouro-claro hover:bg-ouro/10"
+                title="Desfaz o último bloco de mudanças (veja em Registro)"
+              >
+                ↶ Desfazer
+              </button>
+            </span>
+            {dados.grupos.linhas.length > 0 && (
+              <div className="flex w-full flex-wrap items-center gap-1.5 border-t border-ouro/10 pt-2">
+                <span className="datilo text-sm text-nevoa/45">grupos</span>
+                {dados.grupos.linhas.map((g) => (
+                  <span key={g.id} className="flex items-center overflow-hidden rounded-sm border border-ouro/25 text-sm">
+                    <button onClick={() => setSelecionados(new Set(g.personagem_ids))} className="px-2.5 py-1 text-ouro-claro hover:bg-ouro/10" title="Selecionar este grupo">
+                      {g.nome}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Apagar o grupo "${g.nome}"?`)) return;
+                        const { error } = await supabase().from("grupos_ancora").delete().eq("id", g.id);
+                        if (error) alert(error.message);
+                      }}
+                      className="border-l border-ouro/20 px-2 py-1 text-nevoa/40 hover:text-pv-vivo"
+                      aria-label={`Apagar grupo ${g.nome}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
 
-      {backupAberto && <JanelaBackup mesaId={mesa.id} mesaNome={mesa.nome} onFechar={() => setBackupAberto(false)} />}
-      {pinsAbertos && <JanelaPins mesaId={mesa.id} pjs={pjs} onFechar={() => setPinsAbertos(false)} />}
-    </main>
+          {/* Personagens */}
+          <div className="grid items-start gap-3 xl:grid-cols-2">
+            {pjs.map((p) => (
+              <CartaoEscudo
+                key={p.id}
+                p={p}
+                dados={dados}
+                selecionado={selecionados.has(p.id)}
+                onSelecionar={() => alternar(p.id)}
+                onMarca={() => ancora(!p.ancora_ativa, [p.id], "marca")}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* lateral: no computador fica fixa; no celular vira uma das abas */}
+        <aside className={`lg:sticky lg:top-[4.5rem] ${movel === "mesa" ? "hidden lg:block" : ""}`} aria-label="Ferramentas">
+          <div className="mb-2 hidden grid-cols-3 overflow-hidden rounded-sm border border-ouro/25 lg:grid" role="tablist">
+            {(["dados", "combate", "registro"] as const).map((m) => (
+              <button
+                key={m}
+                role="tab"
+                aria-selected={lado === m}
+                onClick={() => setLado(m)}
+                className={`relative py-1.5 ${lado === m ? "bg-ouro/90 text-marinho" : "text-nevoa/75 hover:bg-ouro/10"}`}
+              >
+                {{ dados: "Dados", combate: "Combate", registro: "Registro" }[m]}
+                {m === "combate" && combate && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-sangue-vivo" />}
+              </button>
+            ))}
+          </div>
+          <div className="lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:pr-1">
+            <div className="lg:hidden">{movel !== "mesa" && lateral(movel)}</div>
+            <div className="hidden lg:block">{lateral(lado)}</div>
+          </div>
+        </aside>
+      </div>
+    </>
   );
 }
+
+// ------------------------------------------------------------------ cartão de personagem
 
 function CartaoEscudo({
   p, dados, selecionado, onSelecionar, onMarca,
 }: {
   p: Personagem;
-  dados: ReturnType<typeof useMesa>;
+  dados: Dados;
   selecionado: boolean;
   onSelecionar: () => void;
   onMarca: () => void;
 }) {
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [condicao, setCondicao] = useState(false);
   const f = fichaAtiva(p, dados.fichas.linhas);
   const d = dados.detalhes.linhas.find((x) => x.personagem_id === p.id && x.variante === varianteAtiva(p));
+  const campos = camposVisiveis(p, f);
   const perigo = !!f && (alerta(p.pv_atual, f.pv_max) !== "ok" || alerta(p.san_atual, f.san_max) !== "ok");
+  const campoAberto = campos.find((c) => c.campo === aberto);
 
   return (
     <article
-      className={`painel group p-4 ${p.ancora_ativa ? "sob-ancora" : ""} ${perigo ? "em-perigo" : ""} ${
-        selecionado ? "ring-2 ring-ouro" : ""
-      }`}
+      className={`painel relative p-3 ${p.ancora_ativa ? "sob-ancora" : ""} ${perigo ? "em-perigo" : ""} ${selecionado ? "outline outline-2 outline-offset-2 outline-ouro" : ""}`}
     >
-      <div className="mb-3 flex items-start gap-3">
-        <label className="mt-1 flex cursor-pointer items-center" title="Selecionar para a Âncora">
-          <input type="checkbox" checked={selecionado} onChange={onSelecionar} className="h-4 w-4 accent-[#b8912f]" aria-label={`Selecionar ${p.nome}`} />
-        </label>
-        <FotoPersonagem mesaId={p.mesa_id} personagemId={p.id} nome={p.nome} caminho={p.foto_caminho} tamanho={44} />
+      <header className="flex items-center gap-2.5">
+        <input
+          type="checkbox"
+          checked={selecionado}
+          onChange={onSelecionar}
+          className="h-5 w-5 shrink-0 accent-[#b8912f]"
+          aria-label={`Selecionar ${p.nome} para a Âncora`}
+          title="Selecionar para a Âncora"
+        />
+        <FotoPersonagem mesaId={p.mesa_id} personagemId={p.id} nome={p.nome} caminho={p.foto_caminho} tamanho={38} />
         <div className="min-w-0 flex-1">
-          <h2 className="titulo truncate text-xl leading-tight text-ouro-claro">{p.nome}</h2>
-          <p className="truncate text-sm italic text-nevoa/60">
+          <Link href={`/mestre/ficha/${p.id}`} className="titulo block truncate text-lg leading-tight text-ouro-claro hover:underline" title="Abrir a ficha completa">
+            {p.nome}
+          </Link>
+          <p className="truncate text-sm italic text-nevoa/55">
             {p.jogador ? `${p.jogador}, ` : ""}
             {descricaoPersonagem(p)}
           </p>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="numeros text-lg leading-none">NEX {f?.nex ?? "–"}%</p>
-          <p className="mt-1 text-sm text-nevoa/70">
-            Defesa <span className="numeros text-nevoa">{d?.defesa ?? "–"}</span>
+        <div className="shrink-0 text-right leading-tight">
+          <p className="numeros">NEX {f?.nex ?? "–"}%</p>
+          <p className="text-sm text-nevoa/60">
+            Def. <span className="numeros text-nevoa">{d?.defesa ?? "–"}</span>
           </p>
         </div>
+      </header>
+
+      {/* status compactos: toque para ajustar */}
+      <div className="mt-2.5 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${campos.length}, minmax(0,1fr))` }}>
+        {campos.map(({ campo, rotulo, corViva, max }) => {
+          const atual = (p[campo] as number) ?? 0;
+          const teto = (f?.[max] as number) ?? 0;
+          const temp = campo === "pv_atual" ? p.pv_temp ?? 0 : 0;
+          const ativo = aberto === campo;
+          return (
+            <button
+              key={campo}
+              onClick={() => setAberto(ativo ? null : campo)}
+              aria-expanded={ativo}
+              className={`rounded-sm border px-2 py-1.5 text-left ${ativo ? "border-ouro bg-ouro/10" : "border-ouro/15 hover:border-ouro/40"}`}
+            >
+              <span className="flex items-baseline justify-between gap-1">
+                <span className="text-sm text-nevoa/70">{rotulo}</span>
+                <span className="numeros text-lg leading-none">
+                  {atual}
+                  {temp > 0 && <span className="text-ouro-claro">+{temp}</span>}
+                  <span className="text-sm text-nevoa/45">/{teto}</span>
+                </span>
+              </span>
+              <span className="trilho mt-1.5 block" style={{ height: 5 }}>
+                <span className={`preenchimento block ${corViva}`} style={{ width: `${pct(atual, teto)}%` }} />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-        {p.ancora_ativa ? (
-          <span className="rounded-sm border border-ardosia bg-ardosia/25 px-2 py-0.5">⚓ Âncora ativa, ficha de 50%</span>
-        ) : (
-          <span className="text-nevoa/50">Ficha de 99%</span>
-        )}
-        {p.tem_marca ? (
-          <button onClick={onMarca} className="ml-auto rounded-sm border border-ouro/35 px-2 py-0.5 text-ouro-claro hover:bg-ouro/10">
-            {p.ancora_ativa ? "Soltar a Marca" : "Ativar a Marca"}
-          </button>
-        ) : (
-          <span className="ml-auto italic text-nevoa/45">sem Marca do Império</span>
-        )}
-      </div>
+      {campoAberto && (
+        <AjusteStatus
+          key={campoAberto.campo}
+          rotulo={campoAberto.nome}
+          campo={campoAberto.campo}
+          atual={(p[campoAberto.campo] as number) ?? 0}
+          temp={campoAberto.campo === "pv_atual" ? p.pv_temp ?? 0 : null}
+          onDelta={(n) => dados.ajustar(p, campoAberto.campo, n)}
+          onDefinir={(n) => dados.atualizarPersonagem(p.id, { [campoAberto.campo]: n })}
+          onTemp={(n) => dados.atualizarPersonagem(p.id, { pv_temp: n })}
+          onFechar={() => setAberto(null)}
+        />
+      )}
 
-      <div className="grid gap-3.5">
-        {camposVisiveis(p, f).map(({ campo, rotulo, nome, corViva, max }) => (
-          <BarraStatus
-            key={campo}
-            rotulo={rotulo}
-            nomeCompleto={nome}
-            atual={(p[campo] as number) ?? 0}
-            max={(f?.[max] as number) ?? 0}
-            cor={corViva}
-            editavel
-            densidade="painel"
-            onDelta={(delta) => dados.ajustar(p, campo, delta)}
-            onDefinir={(valor) => dados.atualizarPersonagem(p.id, { [campo]: valor })}
-            temp={campo === "pv_atual" ? p.pv_temp ?? 0 : undefined}
-            onDefinirTemp={campo === "pv_atual" ? (valor) => dados.atualizarPersonagem(p.id, { pv_temp: valor }) : undefined}
-          />
+      {/* condições */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        {p.condicoes.map((c) => (
+          <span key={c} className="flex items-center gap-1 rounded-sm border border-sangue-vivo/50 bg-sangue/20 px-2 py-0.5 text-sm text-nevoa">
+            {c}
+            <button onClick={() => dados.atualizarPersonagem(p.id, { condicoes: p.condicoes.filter((x) => x !== c) })} aria-label={`Tirar ${c}`} className="text-nevoa/60 hover:text-nevoa">
+              ×
+            </button>
+          </span>
         ))}
+        {!condicao ? (
+          <>
+            <button onClick={() => setCondicao(true)} className="rounded-sm border border-dashed border-ouro/30 px-2 py-0.5 text-sm text-nevoa/60 hover:text-ouro-claro">
+              + condição
+            </button>
+            <span className="ml-auto flex items-center gap-2">
+              {p.ancora_ativa && <span className="datilo text-sm text-nevoa/60">ficha 50%</span>}
+              {p.tem_marca ? (
+                <button
+                  onClick={onMarca}
+                  aria-pressed={p.ancora_ativa}
+                  className={`rounded-sm border px-2 py-0.5 text-sm ${p.ancora_ativa ? "border-ardosia bg-ardosia/30 text-nevoa" : "border-ouro/30 text-ouro-claro hover:bg-ouro/10"}`}
+                  title="A Marca do Império aplica a Âncora só neste personagem"
+                >
+                  {p.ancora_ativa ? "Soltar Marca" : "Marca"}
+                </button>
+              ) : (
+                <span className="text-sm italic text-nevoa/35" title="Não tem a Marca do Império">sem Marca</span>
+              )}
+            </span>
+          </>
+        ) : (
+          <div className="w-full">
+            <Condicoes
+              lista={[]}
+              editavel
+              escuro
+              onChange={(nova) => {
+                const c = nova[0];
+                if (c && !p.condicoes.includes(c)) dados.atualizarPersonagem(p.id, { condicoes: [...p.condicoes, c] });
+                setCondicao(false);
+              }}
+            />
+          </div>
+        )}
       </div>
-
-      <div className="mt-3">
-        <Condicoes lista={p.condicoes} editavel escuro onChange={(nova) => dados.atualizarPersonagem(p.id, { condicoes: nova })} />
-      </div>
-
-      <Link href={`/mestre/ficha/${p.id}`} className="mt-3 inline-block text-sm text-ouro-claro underline underline-offset-2">
-        Abrir ficha completa
-      </Link>
     </article>
   );
 }
 
-function JanelaPins({ mesaId, pjs, onFechar }: { mesaId: string; pjs: Personagem[]; onFechar: () => void }) {
-  const [valores, setValores] = useState<Record<string, string>>({});
-  const [ok, setOk] = useState<Record<string, boolean>>({});
-  const linhas: { id: string; nome: string }[] = [{ id: "mestre", nome: "Mestre (você)" }, ...pjs.map((p) => ({ id: p.id, nome: p.nome }))];
-
-  async function salvar(id: string) {
-    const pin = (valores[id] ?? "").trim();
-    if (pin.length < 4) return alert("O PIN precisa de pelo menos 4 caracteres.");
-    const { error } = await supabase().rpc("definir_pin", {
-      p_mesa: mesaId,
-      p_pin: pin,
-      p_personagem: id === "mestre" ? null : id,
-    });
-    if (error) return alert(error.message);
-    setOk((o) => ({ ...o, [id]: true }));
-    setValores((v) => ({ ...v, [id]: "" }));
-  }
-
+/** Ajuste rápido de um status: passos prontos e um valor exato de dano ou cura. */
+function AjusteStatus({
+  rotulo, campo, atual, temp, onDelta, onDefinir, onTemp, onFechar,
+}: {
+  rotulo: string;
+  campo: string;
+  atual: number;
+  temp: number | null;
+  onDelta: (n: number) => void;
+  onDefinir: (n: number) => void;
+  onTemp: (n: number) => void;
+  onFechar: () => void;
+}) {
+  const [valor, setValor] = useState("");
+  const n = Math.abs(parseInt(valor, 10)) || 0;
+  const passo = "numeros rounded-sm border border-ouro/20 py-2 hover:bg-ouro/10";
+  const [menos, mais] = campo === "pv_atual" ? ["Dano", "Cura"] : campo === "san_atual" ? ["Perde", "Recupera"] : ["Gasta", "Recupera"];
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" role="dialog" aria-modal aria-label="PINs de acesso">
-      <div className="painel w-full max-w-md p-5">
-        <div className="mb-1 flex items-center justify-between">
-          <h2 className="titulo text-xl text-ouro-claro">PINs de acesso</h2>
-          <button onClick={onFechar} className="text-2xl leading-none text-nevoa/60" aria-label="Fechar">
-            ×
-          </button>
-        </div>
-        <p className="mb-4 text-sm italic text-nevoa/60">
-          Os PINs ficam embaralhados no banco, então não dá para ver o atual, só definir um novo. Quem já está dentro continua conectado.
-        </p>
-        <ul className="grid gap-2">
-          {linhas.map((l) => (
-            <li key={l.id} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
-              <span className="titulo truncate">{l.nome}</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="novo PIN"
-                aria-label={`Novo PIN de ${l.nome}`}
-                value={valores[l.id] ?? ""}
-                onChange={(e) => {
-                  setValores((v) => ({ ...v, [l.id]: e.target.value }));
-                  setOk((o) => ({ ...o, [l.id]: false }));
-                }}
-                className="numeros rounded-sm border border-ouro/30 bg-noite px-2 py-1 text-center text-nevoa placeholder:text-nevoa/30"
-              />
-              <button
-                onClick={() => salvar(l.id)}
-                className={`w-20 rounded-sm px-2 py-1 text-sm ${ok[l.id] ? "text-emerald-400" : "border border-ouro/35 text-ouro-claro hover:bg-ouro/10"}`}
-              >
-                {ok[l.id] ? "Trocado" : "Trocar"}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div className="mt-2 grid gap-2 rounded-sm border border-ouro/25 bg-noite/60 p-2.5" role="group" aria-label={`Ajustar ${rotulo}`}>
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-nevoa/70">{rotulo}</span>
+        <button onClick={onFechar} className="px-1 text-lg leading-none text-nevoa/50" aria-label="Fechar ajuste">
+          ×
+        </button>
       </div>
+      <div className="grid grid-cols-6 gap-1">
+        {[-10, -5, -1, 1, 5, 10].map((d) => (
+          <button key={d} onClick={() => onDelta(d)} className={`${passo} ${d < 0 ? "text-pv-vivo" : "text-pd-vivo"}`}>
+            {d > 0 ? `+${d}` : `−${-d}`}
+          </button>
+        ))}
+      </div>
+      <form
+        className="grid grid-cols-[1fr_auto_auto_auto] gap-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (n) onDelta(-n);
+          setValor("");
+        }}
+      >
+        <input
+          inputMode="numeric"
+          value={valor}
+          onChange={(e) => setValor(e.target.value.replace(/[^\d]/g, ""))}
+          placeholder="valor"
+          aria-label="Valor"
+          className="numeros min-w-0 rounded-sm border border-ouro/25 bg-noite px-2 py-1.5 text-center text-lg text-nevoa placeholder:text-nevoa/30"
+        />
+        <button className="rounded-sm bg-sangue px-3 text-nevoa disabled:opacity-40" disabled={!n}>
+          {menos}
+        </button>
+        <button type="button" onClick={() => { if (n) onDelta(n); setValor(""); }} className="rounded-sm bg-pd/80 px-3 text-white disabled:opacity-40" disabled={!n}>
+          {mais}
+        </button>
+        <button type="button" onClick={() => { if (valor !== "") onDefinir(n); setValor(""); }} className="rounded-sm border border-ouro/30 px-2.5 text-sm text-ouro-claro disabled:opacity-40" disabled={valor === ""} title={`Pôr ${rotulo} exatamente neste valor`}>
+          Fixar
+        </button>
+      </form>
+      {temp != null && (
+        <div className="flex items-center gap-2 text-sm text-nevoa/70">
+          PV temporário <span className="numeros text-ouro-claro">{temp}</span>
+          <button onClick={() => onTemp(temp + (n || 5))} className="rounded-sm border border-ouro/25 px-2 py-0.5 text-ouro-claro">
+            +{n || 5}
+          </button>
+          {temp > 0 && (
+            <button onClick={() => onTemp(0)} className="text-nevoa/55 underline underline-offset-2">
+              zerar
+            </button>
+          )}
+        </div>
+      )}
+      <p className="text-sm text-nevoa/45">
+        Atual: <span className="numeros">{atual}</span>.{campo === "pv_atual" ? " Dano gasta o PV temporário primeiro." : ""}
+      </p>
     </div>
+  );
+}
+
+function Registro({ dados }: { dados: Dados }) {
+  return (
+    <section className="painel p-3">
+      <h2 className="titulo mb-1 text-ouro-claro">Registro de mudanças</h2>
+      <p className="mb-2 text-sm text-nevoa/50">O “Desfazer” reverte o último bloco desta lista.</p>
+      <ol className="grid gap-1">
+        {dados.log.linhas.slice(0, 80).map((l) => (
+          <li key={l.id} className={`flex gap-2.5 text-[0.95rem] ${l.desfeito ? "line-through opacity-40" : ""}`}>
+            <time className="numeros w-11 shrink-0 text-sm text-nevoa/45">
+              {new Date(l.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </time>
+            <span>
+              {l.personagem_nome}: {NOME_CAMPO[l.campo] ?? l.campo} <span className="numeros">{valorLog(l.antes)}</span> →{" "}
+              <span className="numeros">{valorLog(l.depois)}</span>
+              <span className="text-nevoa/45"> ({l.autor})</span>
+            </span>
+          </li>
+        ))}
+        {dados.log.linhas.length === 0 && <li className="italic text-nevoa/50">Nenhuma mudança ainda.</li>}
+      </ol>
+    </section>
   );
 }

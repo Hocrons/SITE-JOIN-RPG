@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Brasao } from "@/components/Brasao";
+import { Sigilo } from "@/components/Sigilo";
 import { supabase } from "@/lib/supabase";
 import { useSessao } from "@/lib/sessao";
 
@@ -64,8 +65,11 @@ export default function Entrada() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center px-6 pb-8 pt-12">
-      <Brasao tamanho={150} louros className="surgir drop-shadow-[0_6px_10px_rgba(60,38,12,0.35)]" />
-      <h1 className="titulo mt-5 text-center text-[2.75rem] leading-none tracking-[0.18em] text-marinho">PARATUS</h1>
+      <div className="relative grid place-items-center">
+        <Sigilo tamanho={260} rasgo={false} className="pointer-events-none absolute text-ouro/15" />
+        <Brasao tamanho={150} louros className="surgir relative drop-shadow-[0_6px_10px_rgba(0,0,0,0.5)]" />
+      </div>
+      <h1 className="titulo pincelada mt-5 text-center text-[2.75rem] leading-none tracking-[0.18em] text-marinho">PARATUS</h1>
       <div className="meandro mt-4 w-40" aria-hidden />
       <p className="mt-3 text-center text-lg italic text-tinta-suave">onde a membrana da realidade é fina</p>
 

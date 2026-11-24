@@ -2,9 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Brasao } from "@/components/Brasao";
-import { Conexao } from "@/components/Conexao";
-import { NavMestre } from "@/components/NavMestre";
+import { CascaMestre } from "@/components/mestre/CascaMestre";
 import {
   ControleVisibilidade, EditorEntrada, ImportarMarkdown, NotasSecretas, NovaConexao, type Jogador,
 } from "@/components/codice/EdicaoMestre";
@@ -12,7 +10,6 @@ import { Grafo } from "@/components/codice/Grafo";
 import { LeituraEntrada } from "@/components/codice/LeituraEntrada";
 import { filtrar, FiltrosCodice, ListaCodice, SeloVisibilidade, useFiltroCodice } from "@/components/codice/ListaCodice";
 import { useAoVivo } from "@/lib/aoVivo";
-import { useCombateAtivo } from "@/lib/combate";
 import { TIPO, useLore } from "@/lib/lore";
 import { useSessao } from "@/lib/sessao";
 import type { Personagem } from "@/lib/tipos";
@@ -23,7 +20,6 @@ export default function CodiceMestre() {
   const router = useRouter();
   const { carregando, membro, mesa, eMestre } = useSessao();
   const lore = useLore(mesa?.id, true);
-  const { ativo: combate } = useCombateAtivo(mesa?.id);
   const personagens = useAoVivo<L<Personagem>>("personagens", mesa?.id, {
     chave: (p) => String(p.id),
     ordenar: (a, b) => a.ordem - b.ordem,
@@ -68,20 +64,8 @@ export default function CodiceMestre() {
   }
 
   return (
-    <main className="tema-mestre">
-      <div className="mx-auto max-w-7xl px-4 py-5">
-        <header className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Brasao tamanho={38} />
-          <div className="mr-auto">
-            <h1 className="titulo text-2xl text-ouro-claro">{mesa.nome}</h1>
-            <p className="text-sm italic text-nevoa/60">
-              Códice da lore: <span className="numeros not-italic text-nevoa/80">{lore.entradas.length}</span> entradas,{" "}
-              <span className="numeros not-italic text-nevoa/80">{reveladas}</span> reveladas
-            </p>
-          </div>
-          <NavMestre emCombate={!!combate} />
-          <Conexao status={lore.status} escuro />
-        </header>
+    <CascaMestre subtitulo={`Códice: ${lore.entradas.length} entradas, ${reveladas} reveladas`} status={lore.status}>
+      <div className="">
 
         <div className="grid items-start gap-4 lg:grid-cols-[340px_1fr]">
           <aside className="painel grid gap-3 p-3 lg:sticky lg:top-4" aria-label="Entradas do códice">
@@ -239,6 +223,6 @@ export default function CodiceMestre() {
           }}
         />
       )}
-    </main>
+    </CascaMestre>
   );
 }

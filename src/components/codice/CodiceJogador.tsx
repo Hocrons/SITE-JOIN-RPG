@@ -57,7 +57,7 @@ export function CodiceJogador({ mesaId }: { mesaId: string }) {
     <div className="grid gap-3">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="titulo text-2xl text-marinho">Códice</h1>
+          <h1 className="titulo pincelada text-2xl text-marinho">Códice</h1>
           <p className="text-tinta-suave">Tudo o que você já descobriu. O mestre libera mais conforme a história anda.</p>
         </div>
       </div>

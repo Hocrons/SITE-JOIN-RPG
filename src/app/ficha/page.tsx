@@ -15,7 +15,9 @@ import { Notas } from "@/components/Notas";
 import { OrdemTurnos } from "@/components/OrdemTurnos";
 import { useCombateAtivo } from "@/lib/combate";
 import { Rolador } from "@/components/Rolador";
-import { varianteAtiva } from "@/lib/regras";
+import { camposVisiveis } from "@/components/FichaCompleta";
+import { fichaAtiva, pct, varianteAtiva } from "@/lib/regras";
+import type { Ficha, Personagem } from "@/lib/tipos";
 import { useSessao } from "@/lib/sessao";
 import { useMesa } from "@/lib/useMesa";
 
@@ -68,6 +70,9 @@ export default function PaginaFicha() {
             Sair
           </button>
         </header>
+
+        {/* fora da aba Ficha, os status ficam sempre à vista; tocar leva à ficha */}
+        {eu && aba !== "ficha" && <TiraStatus p={eu} fichas={dados.fichas.linhas} onAbrir={() => setAba("ficha")} />}
 
         {aba === "ficha" &&
           (eu ? (
@@ -187,5 +192,38 @@ export default function PaginaFicha() {
         </ul>
       </nav>
     </div>
+  );
+}
+
+function TiraStatus({ p, fichas, onAbrir }: { p: Personagem; fichas: Ficha[]; onAbrir: () => void }) {
+  const f = fichaAtiva(p, fichas);
+  const campos = camposVisiveis(p, f);
+  return (
+    <button
+      onClick={onAbrir}
+      className="sticky top-1 z-20 mb-3 grid w-full gap-2 rounded-sm border border-ouro/25 bg-pergaminho/90 px-3 py-2 text-left shadow-lg backdrop-blur"
+      style={{ gridTemplateColumns: `repeat(${campos.length}, minmax(0,1fr))` }}
+      aria-label="Ver a ficha"
+    >
+      {campos.map(({ campo, rotulo, corViva, max }) => {
+        const atual = (p[campo] as number) ?? 0;
+        const teto = (f?.[max] as number) ?? 0;
+        return (
+          <span key={campo} className="min-w-0">
+            <span className="flex items-baseline justify-between gap-1 text-sm">
+              <span className="text-tinta-suave">{rotulo}</span>
+              <span className="numeros text-tinta">
+                {atual}
+                {campo === "pv_atual" && (p.pv_temp ?? 0) > 0 && <span className="text-ouro-claro">+{p.pv_temp}</span>}
+                <span className="text-tinta-suave">/{teto}</span>
+              </span>
+            </span>
+            <span className="trilho mt-1 block" style={{ height: 4 }}>
+              <span className={`preenchimento block ${corViva}`} style={{ width: `${pct(atual, teto)}%` }} />
+            </span>
+          </span>
+        );
+      })}
+    </button>
   );
 }

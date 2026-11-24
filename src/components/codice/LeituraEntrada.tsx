@@ -38,6 +38,7 @@ export function LeituraEntrada({ entrada, entradas, conexoes, imagens, eMestre, 
       <p className={`flex items-center gap-2 text-sm ${suave}`}>
         <span className="losango" style={{ background: tipo.cor }} aria-hidden />
         {tipo.nome}
+        {eMestre && entrada.visibilidade === "mestre" && <span className="carimbo ml-1">só o mestre</span>}
         {eMestre && (
           <span className="ml-1 rounded-sm border border-current/30 px-1.5 text-xs" title="Status no planejamento">
             {status.nome}

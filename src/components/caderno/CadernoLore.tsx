@@ -205,7 +205,7 @@ export function CadernoLore({ mesaId, personagemId, somenteLeitura }: Props) {
   return (
     <div className="grid gap-3">
       <div>
-        <h1 className="titulo text-2xl text-marinho">{somenteLeitura ? "Lore do jogador" : "Minha lore"}</h1>
+        <h1 className="titulo pincelada text-2xl text-marinho">{somenteLeitura ? "Lore do jogador" : "Minha lore"}</h1>
         <p className="text-tinta-suave">
           {somenteLeitura
             ? "O caderno pessoal deste personagem. Só ele e você veem."

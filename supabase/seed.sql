@@ -79,3 +79,15 @@ do $$ begin
     perform public.semear_linha_paratus(id) from public.mesas where codigo = 'PARATUS';
   end if;
 end $$;
+-- PINs legíveis para a tabela do mestre (migração 0016)
+do $$
+declare c text; r record;
+begin
+  if to_regclass('public.pins_legiveis') is null then return; end if;
+  for r in select mc.mesa_id, mc.pin_mestre_hash h, null::uuid pid from mesas_credenciais mc
+           union all select p.mesa_id, pp.pin_hash, pp.personagem_id from personagens_pin pp join personagens p on p.id = pp.personagem_id loop
+    foreach c in array array['0000','1111','2222','3333','4444','5555'] loop
+      if extensions.crypt(c, r.h) = r.h then perform public._guardar_pin(r.mesa_id, r.pid, c); end if;
+    end loop;
+  end loop;
+end $$;

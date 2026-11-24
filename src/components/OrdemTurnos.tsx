@@ -1,6 +1,7 @@
 "use client";
 
 import { Nome } from "@/components/Nome";
+import { Sigilo } from "@/components/Sigilo";
 import { useAoVivo } from "@/lib/aoVivo";
 import { ordenarTurnos, useCombateAtivo, type ParticipantePublico } from "@/lib/combate";
 import { pct } from "@/lib/regras";
@@ -17,7 +18,8 @@ export function OrdemTurnos({ mesaId, meuPersonagem }: { mesaId: string; meuPers
 
   if (!ativo) {
     return (
-      <section className="folha px-4 py-8 text-center">
+      <section className="folha relative overflow-hidden px-4 py-8 text-center">
+        <Sigilo tamanho={150} className="pointer-events-none absolute -right-8 -top-8 text-ouro-escuro/15" />
         <h1 className="titulo text-2xl text-marinho">Combate</h1>
         <p className="mt-2 italic text-tinta-suave">Nenhum combate em andamento. Quando o mestre começar um, a ordem de turnos aparece aqui.</p>
       </section>

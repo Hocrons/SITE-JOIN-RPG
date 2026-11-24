@@ -44,7 +44,8 @@ export function FichaCompleta({ personagem: p, dados, eMestre }: Props) {
 
   return (
     <>
-      <section className={`folha px-4 pb-5 pt-4 ${p.ancora_ativa ? "sob-ancora" : ""}`} aria-label={`Ficha de ${p.nome}`}>
+      <section className={`folha relative px-4 pb-5 pt-4 ${p.ancora_ativa ? "sob-ancora" : ""}`} aria-label={`Ficha de ${p.nome}`}>
+        <span className="fita" aria-hidden />
         <div className="flex items-start gap-3">
           <FotoPersonagem
             mesaId={p.mesa_id}

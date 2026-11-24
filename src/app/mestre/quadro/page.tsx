@@ -2,17 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Brasao } from "@/components/Brasao";
-import { NavMestre } from "@/components/NavMestre";
+import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { Quadro } from "@/components/quadro/Quadro";
-import { useCombateAtivo } from "@/lib/combate";
 import { useSessao } from "@/lib/sessao";
 
 /** Quadro de investigação visto pelo mestre: o mesmo dos jogadores, mais o envio de arquivos. */
 export default function QuadroMestre() {
   const router = useRouter();
   const { carregando, membro, mesa, eMestre } = useSessao();
-  const { ativo: combate } = useCombateAtivo(mesa?.id);
 
   useEffect(() => {
     if (carregando) return;
@@ -25,18 +22,10 @@ export default function QuadroMestre() {
   }
 
   return (
-    <main className="tema-mestre">
-      <div className="mx-auto max-w-7xl px-4 py-5">
-        <header className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Brasao tamanho={38} />
-          <div className="mr-auto">
-            <h1 className="titulo text-2xl text-ouro-claro">{mesa.nome}</h1>
-            <p className="text-sm italic text-nevoa/60">Quadro de investigação: todos da mesa mexem juntos, ao vivo</p>
-          </div>
-          <NavMestre emCombate={!!combate} />
-        </header>
+    <CascaMestre subtitulo="Quadro de investigação, ao vivo para todos" largo>
+      <div className="">
         <Quadro mesaId={mesa.id} eMestre altura="calc(100dvh - 160px)" />
       </div>
-    </main>
+    </CascaMestre>
   );
 }
