@@ -4,7 +4,11 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { Sigilo } from "@/components/Sigilo";
 import { useCenas } from "@/lib/cenas";
+import { tokenDaVez, useVez } from "@/lib/combate";
 import { useNevoa } from "@/lib/nevoa";
+import { corDe, useSinais } from "@/lib/sinais";
+import { BotaoMapa, FaixaVez, IconeRegua } from "./BotaoMapa";
+import { useFerramentaRegua } from "./regua";
 import { useTokens } from "@/lib/tokens";
 import type { Ficha, Personagem } from "@/lib/tipos";
 
@@ -42,6 +46,15 @@ export function MesaJogador({
         !coberto(ativa.grade_x + (t.coluna + t.tamanho / 2) * s, ativa.grade_y + (t.linha + t.tamanho / 2) * s),
     );
   }, [dt.tokens, ativa, nevoa.ativa, coberto, meuPersonagem]);
+  const eu = useMemo(() => {
+    const p = personagens.find((x) => x.id === meuPersonagem);
+    return { id: meuPersonagem ?? "jogador", nome: p?.nome.split(" ")[0] ?? "Jogador", cor: corDe(meuPersonagem, false) };
+  }, [personagens, meuPersonagem]);
+  const sinais = useSinais(mesaId, ativa?.id, eu);
+  const [comRegua, setComRegua] = useState(false);
+  const regua = useFerramentaRegua(ativa, comRegua, eu, sinais.transmitirRegua);
+  const { combate, vez } = useVez(mesaId);
+  const tokenVez = tokenDaVez(vez, visiveis);
   const meu = dt.tokens.find((t) => meuPersonagem && t.personagem_id === meuPersonagem);
   if (!ativa) {
     return (
@@ -52,25 +65,41 @@ export function MesaJogador({
       </section>
     );
   }
+  const focar = (t: { coluna: number; linha: number; tamanho: number }) => {
+    const s = ativa.grade_tamanho;
+    setFoco({ x: ativa.grade_x + (t.coluna + t.tamanho / 2) * s, y: ativa.grade_y + (t.linha + t.tamanho / 2) * s, n: (foco?.n ?? 0) + 1 });
+  };
+
   return (
     <div className="grid gap-2">
-      <h1 className="titulo pincelada justify-self-start text-xl text-marinho">{ativa.nome}</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h1 className="titulo pincelada text-xl text-marinho">{ativa.nome}</h1>
+        <p className="text-sm text-tinta-suave">Segure parado no mapa para marcar um ponto para todos.</p>
+      </div>
       <Tabuleiro
         cena={ativa}
         foco={foco}
-        extras={
-          meu && (
-            <BotaoFoco
-              onClick={() => {
-                const s = ativa.grade_tamanho;
-                setFoco({
-                  x: ativa.grade_x + (meu.coluna + meu.tamanho / 2) * s,
-                  y: ativa.grade_y + (meu.linha + meu.tamanho / 2) * s,
-                  n: (foco?.n ?? 0) + 1,
-                });
-              }}
+        ferramenta={regua.ferramenta}
+        pings={sinais.pings}
+        reguas={regua.minha ? [...sinais.reguas, regua.minha] : sinais.reguas}
+        onPing={sinais.pingar}
+        faixa={
+          combate && vez ? (
+            <FaixaVez
+              rodada={combate.rodada}
+              nome={vez.nome}
+              minhaVez={!!meuPersonagem && vez.personagem_id === meuPersonagem}
+              onVer={tokenVez ? () => focar(tokenVez) : undefined}
             />
-          )
+          ) : null
+        }
+        extras={
+          <>
+            <BotaoMapa rotulo={comRegua ? "Guardar a régua" : "Régua"} ativo={comRegua} onClick={() => setComRegua(!comRegua)}>
+              <IconeRegua />
+            </BotaoMapa>
+            {meu && <BotaoFoco onClick={() => focar(meu)} />}
+          </>
         }
         nevoa={nevoa.canvas && nevoa.ativa ? { canvas: nevoa.canvas, versao: nevoa.versao, opacidade: 1 } : null}
         tokens={{
@@ -78,7 +107,8 @@ export function MesaJogador({
           arrasto: dt.arrasto,
           personagens,
           fichas,
-          podeMover: (t) => !!meuPersonagem && t.personagem_id === meuPersonagem,
+          podeMover: (t) => !comRegua && !!meuPersonagem && t.personagem_id === meuPersonagem,
+          destacado: tokenVez?.id ?? null,
           onMover: dt.mover,
           onArrastar: dt.transmitirArrasto,
         }}

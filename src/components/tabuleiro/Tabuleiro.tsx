@@ -2,9 +2,11 @@
 
 import type Konva from "konva";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Circle, Image as KImage, Layer, Rect, Shape, Stage } from "react-konva";
+import { Circle, Group, Image as KImage, Label, Layer, Line, Rect, Shape, Stage, Tag, Text } from "react-konva";
 import type { Cena } from "@/lib/cenas";
 import { useUrlArquivo } from "@/lib/quadro";
+import { DURACAO_PING, quadradosEntre, type Ping, type Ponto, type Regua } from "@/lib/sinais";
+import { BotaoMapa } from "./BotaoMapa";
 import { CamadaTokens, type PropsCamadaTokens } from "./CamadaTokens";
 
 export interface Vista {
@@ -53,6 +55,13 @@ interface Props {
   ferramenta?: Ferramenta | null;
   /** Máscara de névoa (opaco = coberto), desenhada acima do mapa e abaixo dos tokens. */
   nevoa?: { canvas: HTMLCanvasElement; versao: number; opacidade: number } | null;
+  /** Pings e réguas (de todos) para desenhar. */
+  pings?: Ping[];
+  reguas?: Regua[];
+  /** Segurar parado sobre o mapa dispara um ping. */
+  onPing?: (p: Ponto) => void;
+  /** Faixa por cima do mapa (ex.: de quem é a vez). */
+  faixa?: React.ReactNode;
   /** Centraliza a vista neste ponto (px do mapa) sempre que `n` mudar. */
   foco?: { x: number; y: number; n: number } | null;
   /** Clique/toque no mapa fora de qualquer token. */
@@ -69,7 +78,7 @@ const limitar = (k: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, k));
  * Tabuleiro em canvas (Konva). Unidades do mundo = pixels do mapa original.
  * Abre pelo mapa leve e, no computador, troca pelo otimizado quando ele chega.
  */
-export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco, ferramenta, nevoa }: Props) {
+export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco, ferramenta, nevoa, pings, reguas, onPing, faixa }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
@@ -231,6 +240,37 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
     ferramenta.fim(mundo());
   }
 
+  // segurar parado ~0,5 s = ping (se mexer, é arrasto do mapa e cancela)
+  const segurar = useRef<{ t: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  function segurarInicio(e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) {
+    cancelarSegurar();
+    if (!onPing || ferramenta || modo !== "navegar") return;
+    if ("touches" in e.evt && e.evt.touches.length > 1) return;
+    if ("button" in e.evt && e.evt.button !== 0) return;
+    const tela = stageRef.current?.getPointerPosition();
+    const m = mundo();
+    if (!tela || !m) return;
+    segurar.current = {
+      x: tela.x,
+      y: tela.y,
+      t: setTimeout(() => {
+        segurar.current = null;
+        const st = stageRef.current;
+        if (st?.isDragging()) st.stopDrag();
+        onPing(m);
+      }, 500),
+    };
+  }
+  function segurarMover() {
+    const s0 = segurar.current;
+    const tela = stageRef.current?.getPointerPosition();
+    if (s0 && tela && Math.hypot(tela.x - s0.x, tela.y - s0.y) > 8) cancelarSegurar();
+  }
+  function cancelarSegurar() {
+    if (segurar.current) clearTimeout(segurar.current.t);
+    segurar.current = null;
+  }
+
   // a máscara da névoa é um canvas que muda por dentro: redesenha a camada
   const camadaNevoa = useRef<Konva.Layer>(null);
   useEffect(() => {
@@ -270,29 +310,38 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
             onTap={(e) => {
               if (modo === "navegar" && e.target === stageRef.current) onClicarFundo?.();
             }}
-            onTouchMove={aoTocarMover}
+            onTouchMove={(e) => {
+              segurarMover();
+              aoTocarMover(e);
+            }}
             onMouseDown={(e) => {
               alinharInicio();
               ferInicio(e);
+              segurarInicio(e);
             }}
             onTouchStart={(e) => {
               alinharInicio();
               ferInicio(e);
+              segurarInicio(e);
             }}
             onMouseMove={(e) => {
               alinharMover();
               ferMover(e);
+              segurarMover();
             }}
             onMouseUp={() => {
               alinharFim();
               ferFim();
+              cancelarSegurar();
             }}
             onMouseLeave={() => {
+              cancelarSegurar();
               ferFim();
               ferramenta?.mover({ x: -1e9, y: -1e9 }, false);
             }}
             onTouchEnd={() => {
               pinca.current = null;
+              cancelarSegurar();
               alinharFim();
               ferFim();
             }}
@@ -341,6 +390,14 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
             )}
             {tokens && <CamadaTokens {...tokens} cena={cena} k={vista.k} />}
             {camadas?.(vista)}
+            {(!!pings?.length || !!reguas?.length) && (
+              <Layer listening={false}>
+                {reguas?.map((r, i) => (
+                  <DesenhoRegua key={i} r={r} k={vista.k} cena={cena} />
+                ))}
+                {!!pings?.length && <Pings pings={pings} k={vista.k} s={cena.grade_tamanho} />}
+              </Layer>
+            )}
             {ferramenta?.previa && (
               <Layer listening={false}>
                 {ferramenta.previa.circulo && (
@@ -395,6 +452,8 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
           <p className="pointer-events-none absolute inset-0 grid place-items-center italic text-nevoa/60">Carregando o mapa…</p>
         )}
 
+        {faixa && <div className="pointer-events-none absolute inset-x-2 top-2 flex justify-center">{faixa}</div>}
+
         {modo === "alinhar" && (
           <p className="pointer-events-none absolute inset-x-2 top-2 rounded-sm bg-noite/90 px-3 py-2 text-center text-nevoa">
             Arraste sobre <b>um</b> quadrado do mapa, de canto a canto. A grade se ajusta ao tamanho e à posição dele.
@@ -412,22 +471,6 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
         </div>
       </div>
     </div>
-  );
-}
-
-export function BotaoMapa({ rotulo, onClick, ativo, children }: { rotulo: string; onClick: () => void; ativo?: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={rotulo}
-      title={rotulo}
-      aria-pressed={ativo}
-      className={`grid h-10 w-10 place-items-center rounded-sm border text-lg leading-none shadow-lg ${
-        ativo ? "border-ouro bg-ouro/90 text-marinho" : "border-ouro/35 bg-noite/90 text-ouro-claro hover:bg-noite-3"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -472,4 +515,59 @@ function useImagemMapa(cena: Cena) {
   }, [urlBoa]);
 
   return img;
+}
+
+function DesenhoRegua({ r, k, cena }: { r: Regua; k: number; cena: Cena }) {
+  const q = quadradosEntre(r.de, r.ate, cena.grade_tamanho);
+  const m = q * cena.metros_por_quadrado;
+  const texto = `${q} ${q === 1 ? "quadrado" : "quadrados"} · ${m.toLocaleString("pt-BR")} m`;
+  const px = (n: number) => n / k;
+  return (
+    <Group>
+      <Line points={[r.de.x, r.de.y, r.ate.x, r.ate.y]} stroke="rgba(10,9,12,0.7)" strokeWidth={px(7)} lineCap="round" />
+      <Line points={[r.de.x, r.de.y, r.ate.x, r.ate.y]} stroke={r.cor} strokeWidth={px(3)} lineCap="round" dash={[px(10), px(6)]} />
+      <Circle x={r.de.x} y={r.de.y} radius={px(5)} fill={r.cor} stroke="#0d0c0e" strokeWidth={px(1.5)} />
+      <Circle x={r.ate.x} y={r.ate.y} radius={px(6)} fill={r.cor} stroke="#0d0c0e" strokeWidth={px(1.5)} />
+      <Label x={r.ate.x + px(12)} y={r.ate.y - px(12)}>
+        <Tag fill="rgba(13,12,16,0.9)" stroke={r.cor} strokeWidth={px(1)} cornerRadius={px(3)} />
+        <Text text={texto} fontSize={px(14)} padding={px(6)} fill="#f1e9d6" />
+      </Label>
+    </Group>
+  );
+}
+
+/** Pings: três ondas que se abrem e somem. */
+function Pings({ pings, k, s }: { pings: Ping[]; k: number; s: number }) {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    let id = 0;
+    const passo = () => {
+      setAgora(Date.now());
+      id = requestAnimationFrame(passo);
+    };
+    id = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const base = Math.max(s * 0.6, 18 / k);
+  return (
+    <>
+      {pings.map((p) => {
+        const t = (agora - p.em) / DURACAO_PING;
+        if (t < 0 || t > 1) return null;
+        return (
+          <Group key={p.id} x={p.x} y={p.y}>
+            {[0, 0.18, 0.36].map((atraso) => {
+              const u = Math.min(1, Math.max(0, (t - atraso) / (1 - atraso)));
+              if (u <= 0) return null;
+              return <Circle key={atraso} radius={base * (0.3 + u * 1.6)} stroke={p.cor} strokeWidth={4 / k} opacity={1 - u} />;
+            })}
+            <Circle radius={5 / k} fill={p.cor} opacity={1 - t} />
+            {t < 0.75 && (
+              <Text text={p.nome} x={10 / k} y={-22 / k} fontSize={13 / k} fill="#f1e9d6" shadowColor="#000" shadowBlur={4 / k} opacity={1 - t / 0.75} />
+            )}
+          </Group>
+        );
+      })}
+    </>
+  );
 }

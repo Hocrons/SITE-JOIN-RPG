@@ -231,7 +231,12 @@ function NoToken({
       {(selecionado || arrastando) && (
         <Rect width={lado} height={lado} stroke="#e2c277" strokeWidth={px(2)} dash={[px(6), px(4)]} fill="rgba(226,194,119,0.12)" />
       )}
-      {destacado && <Rect width={lado} height={lado} stroke={cor} strokeWidth={px(3)} cornerRadius={px(4)} />}
+      {destacado && (
+        <>
+          <Ellipse x={lado / 2} y={lado * 0.88} radiusX={lado * 0.62} radiusY={lado * 0.22} stroke="#e2c277" strokeWidth={px(2)} opacity={0.5} />
+          <Ellipse x={lado / 2} y={lado * 0.88} radiusX={lado * 0.52} radiusY={lado * 0.17} stroke="#f4d98c" strokeWidth={px(4)} shadowColor="#e2c277" shadowBlur={px(12)} />
+        </>
+      )}
       <Ellipse
         x={lado / 2}
         y={lado * 0.88}

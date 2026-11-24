@@ -92,11 +92,11 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 8. Quadro de investigação: arquivos do mestre registrados, cartões, notas e fios, todos ao vivo
 - [x] 9. Linha do tempo: eras, datas, sessões, imagens, ligações com o Códice e "quem vê" por evento
 - [x] 10. Backup da mesa em JSON (Escudo → Backup) e tema escuro para os jogadores
-- [ ] 11. Mesa (tabuleiro virtual)
+- [x] 11. Mesa (tabuleiro virtual)
   - [x] 11.1 Cenas, mapa (versões leve/otimizada no Storage) e grade alinhável; o mestre escolhe a cena que os jogadores veem
   - [x] 11.2 Tokens de corpo inteiro com facção, barras da ficha (cada jogador só vê as do próprio agente), NPCs escondidos e movimento ao vivo
   - [x] 11.3 Névoa de guerra (pincel e retângulo para cobrir/revelar; NPCs na névoa somem para os jogadores)
-  - [ ] 11.4 Régua, ping e integração com a iniciativa
+  - [x] 11.4 Régua (quadrados e metros), ping (segurar parado), zoom/arrasto e destaque do token da vez na iniciativa
 
 ## Backup
 Em **Escudo → Backup**:

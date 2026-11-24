@@ -1,13 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Vista } from "@/components/tabuleiro/Tabuleiro";
 import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { PainelCena } from "@/components/tabuleiro/PainelCena";
 import { PainelNevoa, useFerramentaNevoa, type EstadoNevoa } from "@/components/tabuleiro/PainelNevoa";
 import { PainelTokens } from "@/components/tabuleiro/PainelTokens";
+import { BotaoMapa, FaixaVez, IconeRegua } from "@/components/tabuleiro/BotaoMapa";
+import { useFerramentaRegua } from "@/components/tabuleiro/regua";
+import { tokenDaVez, useVez } from "@/lib/combate";
 import { useNevoa } from "@/lib/nevoa";
+import { corDe, useSinais } from "@/lib/sinais";
 import { useCenas } from "@/lib/cenas";
 import { useSessao } from "@/lib/sessao";
 import { useTokens } from "@/lib/tokens";
@@ -41,8 +45,16 @@ export default function MesaMestre() {
   const cena = dados.cenas.find((c) => c.id === aberta);
   const dt = useTokens(mesa?.id, cena?.id);
   const nevoa = useNevoa(cena, true);
-  // a ferramenta da névoa só vale com a aba da névoa aberta
-  const ferramenta = useFerramentaNevoa(nevoa, cena, lado === "nevoa" ? estadoNevoa : null, raioNevoa);
+  const [comRegua, setComRegua] = useState(false);
+  const eu = useMemo(() => ({ id: "mestre", nome: "Mestre", cor: corDe(null, true) }), []);
+  const sinais = useSinais(mesa?.id, cena?.id, eu);
+  const regua = useFerramentaRegua(cena, comRegua, eu, sinais.transmitirRegua);
+  // a ferramenta da névoa só vale com a aba da névoa aberta; a régua tem prioridade
+  const pincel = useFerramentaNevoa(nevoa, cena, lado === "nevoa" ? estadoNevoa : null, raioNevoa);
+  const ferramenta = regua.ferramenta ?? pincel;
+  const { combate, vez } = useVez(mesa?.id);
+  const tokenVez = tokenDaVez(vez, dt.tokens);
+  const [foco, setFoco] = useState<{ x: number; y: number; n: number } | null>(null);
 
   const centro = useCallback(() => {
     const a = vistaAtual.current;
@@ -126,6 +138,35 @@ export default function MesaMestre() {
               }}
               onClicarFundo={() => setSelecionado(null)}
               ferramenta={alinhando ? null : ferramenta}
+              foco={foco}
+              pings={sinais.pings}
+              reguas={regua.minha ? [...sinais.reguas, regua.minha] : sinais.reguas}
+              onPing={sinais.pingar}
+              faixa={
+                combate && vez ? (
+                  <FaixaVez
+                    rodada={combate.rodada}
+                    nome={vez.nome}
+                    onVer={
+                      tokenVez
+                        ? () => {
+                            const s = cena.grade_tamanho;
+                            setFoco({
+                              x: cena.grade_x + (tokenVez.coluna + tokenVez.tamanho / 2) * s,
+                              y: cena.grade_y + (tokenVez.linha + tokenVez.tamanho / 2) * s,
+                              n: (foco?.n ?? 0) + 1,
+                            });
+                          }
+                        : undefined
+                    }
+                  />
+                ) : null
+              }
+              extras={
+                <BotaoMapa rotulo={comRegua ? "Guardar a régua" : "Régua"} ativo={comRegua} onClick={() => setComRegua(!comRegua)}>
+                  <IconeRegua />
+                </BotaoMapa>
+              }
               nevoa={nevoa.canvas && cena.nevoa_ativa ? { canvas: nevoa.canvas, versao: nevoa.versao, opacidade: 0.5 } : null}
               tokens={{
                 tokens: dt.tokens,
@@ -134,6 +175,7 @@ export default function MesaMestre() {
                 fichas: fichas.fichas.linhas,
                 podeMover: () => !alinhando && !ferramenta,
                 selecionado,
+                destacado: tokenVez?.id ?? null,
                 onSelecionar: (t) => {
                   setSelecionado(t.id);
                   setLado("tokens");

@@ -107,3 +107,25 @@ export function useCombateAtivo(mesaId: string | null | undefined) {
   const ativo = combates.linhas.find((c) => c.ativo) ?? null;
   return { combates, ativo };
 }
+
+/** De quem é a vez no combate ativo (para destacar o token no tabuleiro). */
+export function useVez(mesaId: string | null | undefined) {
+  const { ativo } = useCombateAtivo(mesaId);
+  const publico = useAoVivo<L<ParticipantePublico>>("participantes_publico", mesaId, { chave: (p) => String(p.id) });
+  const vez = ativo?.vez_id ? (publico.linhas.find((p) => p.id === ativo.vez_id) ?? null) : null;
+  return { combate: ativo, vez };
+}
+
+/** Acha o token de um participante: pela ficha ligada ou, sem ficha, pelo nome. */
+export function tokenDaVez<T extends { id: string; personagem_id: string | null; nome: string }>(
+  vez: { personagem_id: string | null; nome: string } | null,
+  tokens: T[],
+): T | null {
+  if (!vez) return null;
+  if (vez.personagem_id) {
+    const t = tokens.find((x) => x.personagem_id === vez.personagem_id);
+    if (t) return t;
+  }
+  const nome = vez.nome.trim().toLocaleLowerCase("pt-BR");
+  return tokens.find((x) => x.nome.trim().toLocaleLowerCase("pt-BR") === nome) ?? null;
+}
