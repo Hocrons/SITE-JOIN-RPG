@@ -90,7 +90,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 6. Códice da Lore com grafo, visibilidade por entrada e conexão, e a lore inicial do Notion
 - [x] 7. Lore pessoal do jogador (estilo Obsidian): notas com [[links]], "mencionada em", grafo; o mestre lê
 - [x] 8. Quadro de investigação: arquivos do mestre registrados, cartões, notas e fios, todos ao vivo
-- [ ] 9. Linha do tempo
+- [x] 9. Linha do tempo: eras, datas, sessões, imagens, ligações com o Códice e "quem vê" por evento
 - [ ] 10. Polimento final e backup
 
 > Arte, brasão e ícones são originais; nada oficial de Ordem Paranormal é usado.

@@ -7,6 +7,7 @@ import { Conexao } from "@/components/Conexao";
 import { CodiceJogador } from "@/components/codice/CodiceJogador";
 import { CadernoLore } from "@/components/caderno/CadernoLore";
 import { Quadro } from "@/components/quadro/Quadro";
+import { LinhaDoTempo } from "@/components/linha/LinhaDoTempo";
 import { FichaCompleta } from "@/components/FichaCompleta";
 import { Inventario } from "@/components/Inventario";
 import { Notas } from "@/components/Notas";
@@ -32,7 +33,7 @@ export default function PaginaFicha() {
   const router = useRouter();
   const { carregando, membro, mesa, eMestre, sair, userId } = useSessao();
   const [aba, setAba] = useState<Aba>("ficha");
-  const [investigacao, setInvestigacao] = useState<"codice" | "quadro">("codice");
+  const [investigacao, setInvestigacao] = useState<"codice" | "linha" | "quadro">("codice");
   const [notasModo, setNotasModo] = useState<"lore" | "bloco">("lore");
   const dados = useMesa(mesa?.id, false);
   const { ativo: combateAtivo } = useCombateAtivo(mesa?.id);
@@ -106,8 +107,8 @@ export default function PaginaFicha() {
 
         {aba === "codice" && (
           <div className="grid gap-3">
-            <div className="segmentos" style={{ gridTemplateColumns: "1fr 1fr" }} role="tablist" aria-label="Investigação">
-              {(["codice", "quadro"] as const).map((m) => (
+            <div className="segmentos" style={{ gridTemplateColumns: "1fr 1fr 1fr" }} role="tablist" aria-label="Investigação">
+              {(["codice", "linha", "quadro"] as const).map((m) => (
                 <button
                   key={m}
                   role="tab"
@@ -116,11 +117,13 @@ export default function PaginaFicha() {
                   className="titulo"
                   style={investigacao === m ? { background: "var(--color-marinho)", color: "var(--color-pergaminho-claro)" } : undefined}
                 >
-                  {m === "codice" ? "Códice" : "Quadro"}
+                  {{ codice: "Códice", linha: "Linha", quadro: "Quadro" }[m]}
                 </button>
               ))}
             </div>
-            {investigacao === "codice" ? <CodiceJogador mesaId={mesa.id} /> : <Quadro mesaId={mesa.id} eMestre={false} altura="calc(100dvh - 330px)" />}
+            {investigacao === "codice" && <CodiceJogador mesaId={mesa.id} />}
+            {investigacao === "linha" && <LinhaDoTempo mesaId={mesa.id} eMestre={false} />}
+            {investigacao === "quadro" && <Quadro mesaId={mesa.id} eMestre={false} altura="calc(100dvh - 330px)" />}
           </div>
         )}
 

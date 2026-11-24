@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/mestre", rotulo: "Escudo" },
   { href: "/mestre/combate", rotulo: "Combate" },
   { href: "/mestre/lore", rotulo: "Códice" },
+  { href: "/mestre/linha", rotulo: "Linha" },
   { href: "/mestre/quadro", rotulo: "Quadro" },
 ];
 

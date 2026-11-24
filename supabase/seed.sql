@@ -74,3 +74,8 @@ do $$ begin
     perform public.semear_lore_paratus(id) from public.mesas where codigo = 'PARATUS';
   end if;
 end $$;
+do $$ begin
+  if to_regproc('public.semear_linha_paratus') is not null then
+    perform public.semear_linha_paratus(id) from public.mesas where codigo = 'PARATUS';
+  end if;
+end $$;
