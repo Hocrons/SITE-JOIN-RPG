@@ -13,6 +13,7 @@ import { useSessao } from "@/lib/sessao";
 
 const SECOES = [
   { href: "/mestre", rotulo: "Escudo", icone: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" },
+  { href: "/mestre/mesa", rotulo: "Mesa", icone: "M3 5h18v14H3zM9 5v14M15 5v14M3 12h18" },
   { href: "/mestre/combate", rotulo: "Combate", icone: "M5 19 19 5M14 5h5v5M5 5l5 5M14 14l5 5M19 14v5h-5" },
   { href: "/mestre/lore", rotulo: "Códice", icone: "M5 4h9a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4zM5 16a4 4 0 0 1 4-4h9" },
   { href: "/mestre/linha", rotulo: "Linha", icone: "M3 12h18M7 12V7M12 12v5M17 12V7" },
@@ -96,7 +97,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
               aria-haspopup="menu"
               className="flex items-center gap-1.5 rounded-sm border border-ouro/30 px-2.5 py-1.5 text-ouro-claro hover:bg-ouro/10"
             >
-              Mesa
+              Opções
               <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
                 <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.6" fill="none" />
               </svg>
@@ -123,7 +124,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
 
       {/* seções no celular */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-ouro/20 bg-noite/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-ouro/20 bg-noite/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
         aria-label="Seções do mestre"
       >
         {SECOES.map((s) => (
@@ -131,7 +132,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
             key={s.href}
             href={s.href}
             aria-current={ativa(s.href) ? "page" : undefined}
-            className={`relative flex flex-col items-center gap-0.5 py-2 text-[0.8rem] ${ativa(s.href) ? "text-ouro-claro" : "text-nevoa/55"}`}
+            className={`relative flex flex-col items-center gap-0.5 py-2 text-[0.72rem] ${ativa(s.href) ? "text-ouro-claro" : "text-nevoa/55"}`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
               <path d={s.icone} />

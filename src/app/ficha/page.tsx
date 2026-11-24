@@ -8,6 +8,7 @@ import { SeletorTema } from "@/components/SeletorTema";
 import { CodiceJogador } from "@/components/codice/CodiceJogador";
 import { CadernoLore } from "@/components/caderno/CadernoLore";
 import { Quadro } from "@/components/quadro/Quadro";
+import { MesaJogador } from "@/components/tabuleiro/MesaJogador";
 import { LinhaDoTempo } from "@/components/linha/LinhaDoTempo";
 import { FichaCompleta } from "@/components/FichaCompleta";
 import { Inventario } from "@/components/Inventario";
@@ -21,10 +22,11 @@ import type { Ficha, Personagem } from "@/lib/tipos";
 import { useSessao } from "@/lib/sessao";
 import { useMesa } from "@/lib/useMesa";
 
-type Aba = "ficha" | "itens" | "dados" | "combate" | "codice" | "notas";
+type Aba = "ficha" | "mesa" | "itens" | "dados" | "combate" | "codice" | "notas";
 
 const ABAS: { id: Aba; rotulo: string; icone: string }[] = [
   { id: "ficha", rotulo: "Ficha", icone: "M4 3h12l4 4v14H4z M8 9h8 M8 13h8 M8 17h5" },
+  { id: "mesa", rotulo: "Mesa", icone: "M3 5h18v14H3z M9 5v14 M15 5v14 M3 12h18" },
   { id: "itens", rotulo: "Itens", icone: "M4 8h16v12H4z M9 8V5h6v3 M4 13h16" },
   { id: "dados", rotulo: "Dados", icone: "M12 2l8.66 5v10L12 22l-8.66-5V7z M12 2v20 M3.34 7L20.66 17 M20.66 7L3.34 17" },
   { id: "combate", rotulo: "Combate", icone: "M5 19L19 5 M15 5h4v4 M9 19H5v-4 M5 5l5 5 M19 19l-5-5" },
@@ -112,6 +114,8 @@ export default function PaginaFicha() {
 
         {aba === "combate" && <OrdemTurnos mesaId={mesa.id} meuPersonagem={membro.personagem_id} />}
 
+        {aba === "mesa" && <MesaJogador mesaId={mesa.id} />}
+
         {aba === "codice" && (
           <div className="grid gap-3">
             <div className="segmentos" style={{ gridTemplateColumns: "1fr 1fr 1fr" }} role="tablist" aria-label="Investigação">
@@ -183,7 +187,7 @@ export default function PaginaFicha() {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
                   <path d={a.icone} />
                 </svg>
-                <span className={`titulo text-sm ${aba === a.id ? "border-b-2 border-ouro" : "border-b-2 border-transparent"}`}>
+                <span className={`titulo text-[0.74rem] min-[400px]:text-sm ${aba === a.id ? "border-b-2 border-ouro" : "border-b-2 border-transparent"}`}>
                   {a.rotulo}
                 </span>
               </button>
