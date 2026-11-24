@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Image as KImage, Layer, Rect, Shape, Stage } from "react-konva";
 import type { Cena } from "@/lib/cenas";
 import { useUrlArquivo } from "@/lib/quadro";
+import { CamadaTokens, type PropsCamadaTokens } from "./CamadaTokens";
 
 export interface Vista {
   x: number;
@@ -28,6 +29,14 @@ interface Props {
   camadas?: (vista: Vista) => React.ReactNode;
   /** Botões extras no canto (ferramentas das próximas etapas). */
   extras?: React.ReactNode;
+  /** Tokens da cena (desenhados acima do mapa e da grade). */
+  tokens?: Omit<PropsCamadaTokens, "cena" | "k">;
+  /** Centraliza a vista neste ponto (px do mapa) sempre que `n` mudar. */
+  foco?: { x: number; y: number; n: number } | null;
+  /** Clique/toque no mapa fora de qualquer token. */
+  onClicarFundo?: () => void;
+  /** Informa a vista atual (para saber o centro da tela). */
+  onVista?: (v: Vista, tela: { w: number; h: number }) => void;
 }
 
 const ZOOM_MIN = 0.05;
@@ -38,7 +47,7 @@ const limitar = (k: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, k));
  * Tabuleiro em canvas (Konva). Unidades do mundo = pixels do mapa original.
  * Abre pelo mapa leve e, no computador, troca pelo otimizado quando ele chega.
  */
-export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras }: Props) {
+export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh", camadas, extras, onClicarFundo, onVista, tokens, foco }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [tam, setTam] = useState({ w: 0, h: 0 });
@@ -48,6 +57,22 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
   const largura = cena.mapa_largura ?? 0;
   const alturaMapa = cena.mapa_altura ?? 0;
   const enquadradoPara = useRef<string | null>(null);
+
+  const onVistaRef = useRef(onVista);
+  onVistaRef.current = onVista;
+  useEffect(() => {
+    onVistaRef.current?.(vista, tam);
+  }, [vista, tam]);
+
+  const focoN = foco?.n;
+  useEffect(() => {
+    if (!foco || !tam.w) return;
+    setVista((v) => {
+      const k = Math.max(v.k, 0.6);
+      return { k, x: tam.w / 2 - foco.x * k, y: tam.h / 2 - foco.y * k };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focoN]);
 
   // tamanho da caixa
   useEffect(() => {
@@ -184,6 +209,12 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
               if (e.target === stageRef.current) setVista((v) => ({ ...v, x: e.target.x(), y: e.target.y() }));
             }}
             onWheel={aoRodar}
+            onClick={(e) => {
+              if (modo === "navegar" && e.target === stageRef.current) onClicarFundo?.();
+            }}
+            onTap={(e) => {
+              if (modo === "navegar" && e.target === stageRef.current) onClicarFundo?.();
+            }}
             onTouchMove={aoTocarMover}
             onMouseDown={alinharInicio}
             onTouchStart={alinharInicio}
@@ -231,6 +262,7 @@ export function Tabuleiro({ cena, modo = "navegar", onAlinhar, altura = "70dvh",
                 />
               )}
             </Layer>
+            {tokens && <CamadaTokens {...tokens} cena={cena} k={vista.k} />}
             {camadas?.(vista)}
             {selecao && (
               <Layer listening={false}>

@@ -1,11 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Vista } from "@/components/tabuleiro/Tabuleiro";
 import { CascaMestre } from "@/components/mestre/CascaMestre";
 import { PainelCena } from "@/components/tabuleiro/PainelCena";
+import { PainelTokens } from "@/components/tabuleiro/PainelTokens";
 import { useCenas } from "@/lib/cenas";
 import { useSessao } from "@/lib/sessao";
+import { useTokens } from "@/lib/tokens";
+import { useMesa } from "@/lib/useMesa";
 
 const Tabuleiro = dynamic(() => import("@/components/tabuleiro/Tabuleiro").then((m) => m.Tabuleiro), {
   ssr: false,
@@ -19,6 +23,10 @@ export default function MesaMestre() {
   const [aberta, setAberta] = useState<string | null>(null);
   const [alinhando, setAlinhando] = useState(false);
   const [nova, setNova] = useState("");
+  const [lado, setLado] = useState<"cena" | "tokens">("tokens");
+  const [selecionado, setSelecionado] = useState<string | null>(null);
+  const fichas = useMesa(mesa?.id, true);
+  const vistaAtual = useRef<{ v: Vista; w: number; h: number } | null>(null);
 
   // abre a cena ativa (ou a primeira) ao chegar
   useEffect(() => {
@@ -27,9 +35,26 @@ export default function MesaMestre() {
   }, [dados.cenas, dados.ativa, aberta]);
 
   const cena = dados.cenas.find((c) => c.id === aberta);
+  const dt = useTokens(mesa?.id, cena?.id);
+
+  const centro = useCallback(() => {
+    const a = vistaAtual.current;
+    if (!cena || !a) return { c: 0, l: 0 };
+    const s = cena.grade_tamanho;
+    const wx = (a.w / 2 - a.v.x) / a.v.k;
+    const wy = (a.h / 2 - a.v.y) / a.v.k;
+    return {
+      c: Math.floor((wx - cena.grade_x) / s),
+      l: Math.floor((wy - cena.grade_y) / s),
+    };
+  }, [cena]);
 
   return (
-    <CascaMestre subtitulo={dados.ativa ? `Mesa: os jogadores veem “${dados.ativa.nome}”` : "Mesa: nenhuma cena para os jogadores"} status={dados.status} largo>
+    <CascaMestre
+      subtitulo={dados.ativa ? `Mesa: os jogadores veem “${dados.ativa.nome}”` : "Mesa: nenhuma cena para os jogadores"}
+      status={dados.status}
+      largo
+    >
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-2">
           <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Cenas">
@@ -41,6 +66,7 @@ export default function MesaMestre() {
                 onClick={() => {
                   setAberta(c.id);
                   setAlinhando(false);
+                  setSelecionado(null);
                 }}
                 className={`flex shrink-0 items-center gap-2 rounded-sm border px-3 py-1.5 ${
                   c.id === aberta ? "border-ouro bg-ouro/90 text-marinho" : "border-ouro/25 text-nevoa/80 hover:bg-ouro/10"
@@ -79,8 +105,31 @@ export default function MesaMestre() {
               cena={cena}
               modo={alinhando ? "alinhar" : "navegar"}
               onAlinhar={(a) => {
-                dados.salvar(cena.id, { grade_tamanho: a.tamanho, grade_x: a.x, grade_y: a.y, grade_visivel: true });
+                dados.salvar(cena.id, {
+                  grade_tamanho: a.tamanho,
+                  grade_x: a.x,
+                  grade_y: a.y,
+                  grade_visivel: true,
+                });
                 setAlinhando(false);
+              }}
+              onVista={(v, t) => {
+                vistaAtual.current = { v, w: t.w, h: t.h };
+              }}
+              onClicarFundo={() => setSelecionado(null)}
+              tokens={{
+                tokens: dt.tokens,
+                arrasto: dt.arrasto,
+                personagens: fichas.personagens.linhas,
+                fichas: fichas.fichas.linhas,
+                podeMover: () => !alinhando,
+                selecionado,
+                onSelecionar: (t) => {
+                  setSelecionado(t.id);
+                  setLado("tokens");
+                },
+                onMover: dt.mover,
+                onArrastar: dt.transmitirArrasto,
               }}
               altura={typeof window !== "undefined" && window.innerWidth < 1024 ? "62dvh" : "calc(100dvh - 190px)"}
             />
@@ -92,8 +141,35 @@ export default function MesaMestre() {
         </div>
 
         {cena && (
-          <aside className="painel p-4 lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto" aria-label="Configurar cena">
-            <PainelCena key={cena.id} cena={cena} dados={dados} alinhando={alinhando} onAlinhar={() => setAlinhando(!alinhando)} />
+          <aside
+            className="painel p-4 lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
+            aria-label="Configurar cena"
+          >
+            <div className="mb-4 grid grid-cols-2 gap-1 rounded-sm border border-ouro/20 p-1" role="tablist" aria-label="Painel">
+              {(["tokens", "cena"] as const).map((x) => (
+                <button
+                  key={x}
+                  role="tab"
+                  aria-selected={lado === x}
+                  onClick={() => setLado(x)}
+                  className={`rounded-sm py-1.5 titulo ${lado === x ? "bg-ouro/90 text-marinho" : "text-nevoa/70 hover:bg-ouro/10"}`}
+                >
+                  {x === "tokens" ? `Tokens (${dt.tokens.length})` : "Cena e grade"}
+                </button>
+              ))}
+            </div>
+            {lado === "cena" ? (
+              <PainelCena key={cena.id} cena={cena} dados={dados} alinhando={alinhando} onAlinhar={() => setAlinhando(!alinhando)} />
+            ) : (
+              <PainelTokens
+                cena={cena}
+                dt={dt}
+                personagens={fichas.personagens.linhas}
+                selecionado={selecionado}
+                onSelecionar={setSelecionado}
+                centro={centro}
+              />
+            )}
           </aside>
         )}
       </div>

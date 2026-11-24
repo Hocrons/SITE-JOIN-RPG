@@ -8,7 +8,7 @@ Fichas compartilhadas em tempo real, Escudo do Mestre com a Âncora, dados com p
 
 ```
 supabase/
-  migrations/0001…0019         esquema, regras (RLS), funções e dados iniciais; rode em ordem
+  migrations/0001…0020         esquema, regras (RLS), funções e dados iniciais; rode em ordem
   seed.sql                     mesa "Paratus" + 5 personagens (+ lore e linha do tempo, se 0008/0014 já rodaram)
   catalogo/                    gerador do catálogo dos livros (0005, 0006)
   lore/                        lore inicial do Notion (0008) e eventos da linha do tempo (0014)
@@ -38,7 +38,7 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
-5. Depois, rode os outros arquivos de `supabase/migrations/` em ordem (`0002` até `0019`), um por query. Quando sair um arquivo novo, rode só ele.
+5. Depois, rode os outros arquivos de `supabase/migrations/` em ordem (`0002` até `0020`), um por query. Quando sair um arquivo novo, rode só ele.
 6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
 ### 2. Rodar no seu computador (opcional)
@@ -94,7 +94,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 10. Backup da mesa em JSON (Escudo → Backup) e tema escuro para os jogadores
 - [ ] 11. Mesa (tabuleiro virtual)
   - [x] 11.1 Cenas, mapa (versões leve/otimizada no Storage) e grade alinhável; o mestre escolhe a cena que os jogadores veem
-  - [ ] 11.2 Tokens e movimento em tempo real
+  - [x] 11.2 Tokens de corpo inteiro com facção, barras da ficha (cada jogador só vê as do próprio agente), NPCs escondidos e movimento ao vivo
   - [ ] 11.3 Névoa de guerra
   - [ ] 11.4 Régua, ping e integração com a iniciativa
 

@@ -114,7 +114,14 @@ export default function PaginaFicha() {
 
         {aba === "combate" && <OrdemTurnos mesaId={mesa.id} meuPersonagem={membro.personagem_id} />}
 
-        {aba === "mesa" && <MesaJogador mesaId={mesa.id} />}
+        {aba === "mesa" && (
+          <MesaJogador
+            mesaId={mesa.id}
+            meuPersonagem={membro.personagem_id}
+            personagens={dados.personagens.linhas}
+            fichas={dados.fichas.linhas}
+          />
+        )}
 
         {aba === "codice" && (
           <div className="grid gap-3">
