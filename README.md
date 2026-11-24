@@ -8,7 +8,7 @@ Fichas compartilhadas em tempo real, Escudo do Mestre com a Âncora, dados com p
 
 ```
 supabase/
-  migrations/0001…0016         esquema, regras (RLS), funções e dados iniciais; rode em ordem
+  migrations/0001…0017         esquema, regras (RLS), funções e dados iniciais; rode em ordem
   seed.sql                     mesa "Paratus" + 5 personagens (+ lore e linha do tempo, se 0008/0014 já rodaram)
   catalogo/                    gerador do catálogo dos livros (0005, 0006)
   lore/                        lore inicial do Notion (0008) e eventos da linha do tempo (0014)
@@ -25,7 +25,7 @@ src/
 
 - **Acesso sem e-mail:** o navegador faz login anônimo no Supabase; a função `entrar_mesa(código, PIN, personagem)` confere o PIN (bcrypt) e liga aquela sessão ao personagem ou ao papel de mestre. Depois de 8 PINs errados em 15 min, o alvo é bloqueado temporariamente.
 - **RLS em todas as tabelas:** jogador só altera o próprio personagem; detalhes da ficha, anotações e inventário só para dono e mestre; NPCs/ameaças, log e notas secretas só para o mestre.
-- **Âncora:** um gatilho aplica o teto da ficha ativa em *toda* alteração. Ligar corta PV/SAN/PE no máximo da ficha 50%; desligar mantém os valores. A Marca do Império só afeta quem tem `tem_marca`.
+- **Âncora (total perdido):** cada personagem guarda o total perdido/gasto de PV, SAN, PE e PD (`pv_perdido`…). O atual é sempre o máximo da ficha ativa menos esse total, com mínimo 0. Dano e gasto aumentam o total (sem passar do máximo da ficha ativa); cura e recuperação diminuem. Trocar entre a ficha de 99% e a de 50% só muda o máximo. Pôr um valor exato vira total = máximo − valor. A Marca do Império só afeta quem tem `tem_marca`.
 - **PV temporário:** campo `pv_temp`, que fica acima do máximo, aparece em dourado listrado e é gasto primeiro quando o personagem leva dano. A Âncora não corta o PV temporário.
 - **Log e desfazer:** toda mudança de PV/SAN/PE/PD, condições e Âncora vai para `log_alteracoes`; `desfazer_ultima` reverte o último lote (um clique na Âncora global desfaz tudo de uma vez).
 - **Dados no servidor:** `rolar()` sorteia no banco, então o feed é confiável. Rolagens secretas só aparecem para o autor e o mestre.
@@ -38,7 +38,7 @@ src/
 2. **Authentication → Sign In / Providers → Allow anonymous sign-ins: ON** → Save. *(Obrigatório: é assim que se entra sem e-mail.)*
 3. **SQL Editor → New query** → cole todo o conteúdo de `supabase/migrations/0001_paratus.sql` → **Run**.
 4. Nova query → cole `supabase/seed.sql` → **Run**.
-5. Depois, rode os outros arquivos de `supabase/migrations/` em ordem (`0002` até `0016`), um por query. Quando sair um arquivo novo, rode só ele.
+5. Depois, rode os outros arquivos de `supabase/migrations/` em ordem (`0002` até `0017`), um por query. Quando sair um arquivo novo, rode só ele.
 6. **Project Settings → API**: copie a **Project URL** e a chave **anon public**.
 
 ### 2. Rodar no seu computador (opcional)

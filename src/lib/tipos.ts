@@ -37,6 +37,11 @@ export interface Personagem {
   pe_atual: number;
   pd_atual: number | null;
   pv_temp: number;
+  /** Total perdido/gasto: o atual é o máximo da ficha ativa menos isto. */
+  pv_perdido?: number;
+  san_perdido?: number;
+  pe_perdido?: number;
+  pd_perdido?: number | null;
   condicoes: string[];
   arquivado: boolean;
   atualizado_em: string;

@@ -45,7 +45,7 @@ export function useMesa(mesaId: string | null | undefined, eMestre: boolean) {
 
   const { setLinhas: setPersonagens, recarregar: recarregarPersonagens } = personagens;
 
-  /** +/- atômico no servidor; mostra na hora (o servidor confirma com o teto aplicado). */
+  /** +/- atômico no servidor (mexe no total perdido); mostra na hora e o servidor confirma o valor certo. */
   const ajustar = useCallback(
     async (p: Personagem, campo: CampoStatus, delta: number) => {
       setPersonagens((l) =>
@@ -58,10 +58,13 @@ export function useMesa(mesaId: string | null | undefined, eMestre: boolean) {
           return { ...x, [campo]: Math.max(0, ((x[campo] as number) ?? 0) + delta) };
         }),
       );
-      const { error } = await supabase().rpc("ajustar_status", { p_personagem: p.id, p_campo: campo, p_delta: delta });
+      const { data, error } = await supabase().rpc("ajustar_status", { p_personagem: p.id, p_campo: campo, p_delta: delta });
       if (error) {
         alert(error.message);
         recarregarPersonagens();
+      } else if (data) {
+        const r = data as Personagem;
+        setPersonagens((l) => l.map((x) => (x.id === r.id ? { ...x, ...r } : x)));
       }
     },
     [setPersonagens, recarregarPersonagens],

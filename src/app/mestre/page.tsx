@@ -310,6 +310,7 @@ function CartaoEscudo({
           rotulo={campoAberto.nome}
           campo={campoAberto.campo}
           atual={(p[campoAberto.campo] as number) ?? 0}
+          perdido={(p[campoAberto.campo.replace("_atual", "_perdido") as keyof Personagem] as number | null | undefined) ?? null}
           temp={campoAberto.campo === "pv_atual" ? p.pv_temp ?? 0 : null}
           onDelta={(n) => dados.ajustar(p, campoAberto.campo, n)}
           onDefinir={(n) => dados.atualizarPersonagem(p.id, { [campoAberto.campo]: n })}
@@ -370,11 +371,12 @@ function CartaoEscudo({
 
 /** Ajuste rápido de um status: passos prontos e um valor exato de dano ou cura. */
 function AjusteStatus({
-  rotulo, campo, atual, temp, onDelta, onDefinir, onTemp, onFechar,
+  rotulo, campo, atual, perdido, temp, onDelta, onDefinir, onTemp, onFechar,
 }: {
   rotulo: string;
   campo: string;
   atual: number;
+  perdido: number | null;
   temp: number | null;
   onDelta: (n: number) => void;
   onDefinir: (n: number) => void;
@@ -459,7 +461,13 @@ function AjusteStatus({
         </form>
       )}
       <p className="text-sm text-nevoa/45">
-        Atual: <span className="numeros">{atual}</span>.{campo === "pv_atual" ? " Dano gasta o PV temporário primeiro." : ""}
+        Atual <span className="numeros">{atual}</span>
+        {perdido != null && (
+          <>
+            , total {campo === "pv_atual" || campo === "san_atual" ? "perdido" : "gasto"} <span className="numeros">{perdido}</span> (vale nas duas fichas)
+          </>
+        )}
+        .{campo === "pv_atual" ? " Dano gasta o PV temporário primeiro." : ""}
       </p>
     </div>
   );
@@ -471,7 +479,7 @@ function Registro({ dados }: { dados: Dados }) {
       <h2 className="titulo mb-1 text-ouro-claro">Registro de mudanças</h2>
       <p className="mb-2 text-sm text-nevoa/50">O “Desfazer” reverte o último bloco desta lista.</p>
       <ol className="grid gap-1">
-        {dados.log.linhas.slice(0, 80).map((l) => (
+        {dados.log.linhas.filter((l) => !l.campo.endsWith("_perdido")).slice(0, 80).map((l) => (
           <li key={l.id} className={`flex gap-2.5 text-[0.95rem] ${l.desfeito ? "line-through opacity-40" : ""}`}>
             <time className="numeros w-11 shrink-0 text-sm text-nevoa/45">
               {new Date(l.criado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
