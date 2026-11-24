@@ -1,5 +1,6 @@
 "use client";
 
+import { condicao as condicaoInfo } from "@/lib/condicoes";
 import Link from "next/link";
 import { useState } from "react";
 import { Condicoes } from "@/components/Condicoes";
@@ -237,6 +238,7 @@ function CartaoEscudo({
 }) {
   const [aberto, setAberto] = useState<string | null>(null);
   const [condicao, setCondicao] = useState(false);
+  const [lendo, setLendo] = useState<string | null>(null);
   const f = fichaAtiva(p, dados.fichas.linhas);
   const d = dados.detalhes.linhas.find((x) => x.personagem_id === p.id && x.variante === varianteAtiva(p));
   const campos = camposVisiveis(p, f);
@@ -321,9 +323,11 @@ function CartaoEscudo({
 
       {/* condições */}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        {p.condicoes.map((c) => (
-          <span key={c} className="flex items-center gap-1 rounded-sm border border-sangue-vivo/50 bg-sangue/20 px-2 py-0.5 text-sm text-nevoa">
-            {c}
+        {!condicao && p.condicoes.map((c) => (
+          <span key={c} className={`flex items-center gap-1 rounded-sm border border-sangue-vivo/50 bg-sangue/20 px-2 py-0.5 text-sm text-nevoa ${lendo === c ? "ring-2 ring-ouro/60" : ""}`}>
+            <button onClick={() => setLendo(lendo === c ? null : c)} aria-expanded={lendo === c} title={condicaoInfo(c)?.resumo}>
+              {c}
+            </button>
             <button onClick={() => dados.atualizarPersonagem(p.id, { condicoes: p.condicoes.filter((x) => x !== c) })} aria-label={`Tirar ${c}`} className="text-nevoa/60 hover:text-nevoa">
               ×
             </button>
@@ -353,18 +357,22 @@ function CartaoEscudo({
         ) : (
           <div className="w-full">
             <Condicoes
-              lista={[]}
+              lista={p.condicoes}
               editavel
               escuro
-              onChange={(nova) => {
-                const c = nova[0];
-                if (c && !p.condicoes.includes(c)) dados.atualizarPersonagem(p.id, { condicoes: [...p.condicoes, c] });
-                setCondicao(false);
-              }}
+              onChange={(nova) => dados.atualizarPersonagem(p.id, { condicoes: nova })}
             />
+            <button onClick={() => setCondicao(false)} className="mt-2 text-sm text-ouro-claro underline underline-offset-2">
+              Pronto
+            </button>
           </div>
         )}
       </div>
+      {!condicao && lendo && condicaoInfo(lendo) && (
+        <p className="mt-1.5 rounded-sm border border-ouro/20 bg-noite/60 px-2.5 py-1.5 text-sm text-nevoa">
+          <b className="titulo text-ouro-claro">{condicaoInfo(lendo)!.nome}.</b> {condicaoInfo(lendo)!.texto}
+        </p>
+      )}
     </article>
   );
 }

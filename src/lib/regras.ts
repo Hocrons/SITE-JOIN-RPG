@@ -1,3 +1,4 @@
+import { CONDICOES } from "./condicoes";
 import type { Atributo, Ficha, Personagem, Variante } from "./tipos";
 
 /** Ficha em uso: Âncora ativa => 50%, senão 99%. */
@@ -42,13 +43,7 @@ export function descricaoPersonagem(p: Pick<Personagem, "classe" | "trilha" | "o
 }
 
 /** Condições comuns de Ordem Paranormal (sugestões; qualquer texto é aceito). */
-export const CONDICOES_SUGERIDAS = [
-  "Abalado", "Agarrado", "Alquebrado", "Apavorado", "Asfixiado", "Atordoado", "Caído", "Cego",
-  "Confuso", "Debilitado", "Desprevenido", "Enjoado", "Enlouquecendo", "Enredado", "Envenenado",
-  "Esmorecido", "Exausto", "Fatigado", "Fraco", "Frustrado", "Imóvel", "Inconsciente", "Indefeso",
-  "Lento", "Machucado", "Morrendo", "Ofuscado", "Paralisado", "Pasmo", "Perturbado", "Sangrando",
-  "Surdo", "Surpreendido", "Vulnerável",
-];
+export const CONDICOES_SUGERIDAS = CONDICOES.filter((c) => !c.automatica).map((c) => c.nome);
 
 export const NOME_ATRIBUTO: Record<Atributo, string> = {
   AGI: "Agilidade", FOR: "Força", INT: "Intelecto", PRE: "Presença", VIG: "Vigor",

@@ -17,6 +17,7 @@ import { OrdemTurnos } from "@/components/OrdemTurnos";
 import { useCombateAtivo } from "@/lib/combate";
 import { Rolador } from "@/components/Rolador";
 import { camposVisiveis } from "@/components/FichaCompleta";
+import { condicoesDoPersonagem } from "@/lib/condicoes";
 import { fichaAtiva, pct, varianteAtiva } from "@/lib/regras";
 import type { Ficha, Personagem } from "@/lib/tipos";
 import { useSessao } from "@/lib/sessao";
@@ -109,6 +110,7 @@ export default function PaginaFicha() {
             atributos={meusDetalhes?.atributos}
             pericias={meusDetalhes?.pericias ?? []}
             eMestre={false}
+            condicoes={condicoesDoPersonagem(eu, fichaAtiva(eu, dados.fichas.linhas))}
           />
         )}
 

@@ -6,7 +6,9 @@ import { useAoVivo } from "@/lib/aoVivo";
 import { useCatalogo, useItensPersonagem } from "@/lib/catalogo";
 import { rolagensDaFicha } from "@/lib/rolagensFicha";
 import { descreverPreset, expressaoDoTeste, expressaoValida, rolar, type Preset, type TipoPreset } from "@/lib/dados";
-import { ATRIBUTOS, NOME_ATRIBUTO } from "@/lib/regras";
+import { textoPenalidade, type EstadoCondicoes } from "@/lib/condicoes";
+import { normalizar } from "@/lib/catalogo";
+import { ATRIBUTOS, NOME_ATRIBUTO, expressaoTeste } from "@/lib/regras";
 import { supabase } from "@/lib/supabase";
 import type { Atributo, Pericia, Rolagem } from "@/lib/tipos";
 
@@ -20,10 +22,22 @@ interface Props {
   pericias?: Pericia[];
   eMestre: boolean;
   escuro?: boolean;
+  /** Condições do personagem: tiram dados dos testes e ataques. */
+  condicoes?: EstadoCondicoes;
 }
 
 
-export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestre, escuro }: Props) {
+export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestre, escuro, condicoes }: Props) {
+  /** Penalidade das condições num teste (perícia achada pelo título do preset). */
+  function penalidade(p: { atributo: Atributo | null; titulo?: string; tipo?: string }, atributoFixo?: Atributo) {
+    if (!condicoes) return { n: 0, de: [] as string[] };
+    const atributo = atributoFixo ?? p.atributo;
+    const pericia = p.tipo === "arma" ? null : pericias.find((x) => p.titulo && normalizar(p.titulo).includes(normalizar(x.nome)))?.nome ?? null;
+    return condicoes.dados({ atributo, pericia, ataque: p.tipo === "arma", corpoACorpo: p.tipo === "arma" && atributo === "FOR" });
+  }
+  function exprComPenalidade(a: Atributo, bonus: number, n: number) {
+    return n ? expressaoTeste((atributos?.[a] ?? 0) - n, bonus) : expressaoDoTeste(atributos, a, bonus);
+  }
   const [expr, setExpr] = useState("");
   const [secreta, setSecreta] = useState(false);
   const [ultimos, setUltimos] = useState<Rolagem[]>([]);
@@ -77,10 +91,11 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
   const base = { mesaId, personagemId };
 
   function rolarPreset(p: Preset) {
+    const pen = penalidade(p);
     const teste = () => ({
       ...base,
-      expressao: expressaoDoTeste(atributos, (p.atributo ?? "AGI") as Atributo, p.bonus),
-      titulo: p.tipo === "arma" ? `${p.titulo}: ataque` : p.titulo,
+      expressao: exprComPenalidade((p.atributo ?? "AGI") as Atributo, p.bonus, pen.n),
+      titulo: `${p.tipo === "arma" ? `${p.titulo}: ataque` : p.titulo}${pen.n ? ` ${textoPenalidade(pen)}` : ""}`,
       margem: p.margem,
     });
     if (p.tipo === "teste") return executar(teste);
@@ -160,6 +175,8 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
       )}
       {erro && <p className="rounded-sm border border-pv/40 bg-pv/10 p-2 text-sm text-pv-vivo">{erro}</p>}
 
+      {condicoes && <AvisoCondicoes c={condicoes} escuro={escuro} />}
+
       {/* Rolagem livre + testes */}
       <section className={`${t.painel} grid gap-3 p-4`}>
         <form
@@ -203,12 +220,22 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
                   key={a}
                   type="button"
                   title={NOME_ATRIBUTO[a]}
-                  onClick={() => executar(() => ({ ...base, expressao: expressaoDoTeste(atributos, a, 0), titulo: `Teste de ${NOME_ATRIBUTO[a]}` }))}
+                  onClick={() => {
+                    const pen = penalidade({ atributo: a });
+                    executar(() => ({
+                      ...base,
+                      expressao: exprComPenalidade(a, 0, pen.n),
+                      titulo: `Teste de ${NOME_ATRIBUTO[a]}${pen.n ? ` ${textoPenalidade(pen)}` : ""}`,
+                    }));
+                  }}
                   className={`flex flex-col items-center rounded-sm py-1.5 ${t.chip}`}
                   disabled={rolando}
                 >
                   <span className="titulo text-sm">{a}</span>
                   <span className="numeros text-lg leading-none">{atributos[a] ?? 0}d20</span>
+                  {penalidade({ atributo: a }).n > 0 && (
+                    <span className="numeros text-xs text-pv-vivo">–{penalidade({ atributo: a }).n}d</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -255,6 +282,12 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
                           {descreverPreset(p)}
                           {nota ? ` (${nota})` : ""}
                         </span>
+                        {(p.tipo === "arma" || p.tipo === "teste") && penalidade(p).n > 0 && (
+                          <span className="block text-sm text-pv-vivo">{textoPenalidade(penalidade(p))} no ataque</span>
+                        )}
+                        {g.titulo === "Rituais" && !!condicoes?.custoPE && (
+                          <span className="block text-sm text-pv-vivo">+{condicoes.custoPE} PE (alquebrado)</span>
+                        )}
                       </button>
                       {p.tipo === "arma" && (
                         <button
@@ -371,7 +404,14 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
               .map((per) => (
                 <button
                   key={per.nome}
-                  onClick={() => executar(() => ({ ...base, expressao: expressaoDoTeste(atributos, per.atributo, per.bonus), titulo: per.nome }))}
+                  onClick={() => {
+                    const pen = condicoes ? condicoes.dados({ atributo: per.atributo, pericia: per.nome }) : { n: 0, de: [] };
+                    executar(() => ({
+                      ...base,
+                      expressao: exprComPenalidade(per.atributo, per.bonus, pen.n),
+                      titulo: `${per.nome}${pen.n ? ` ${textoPenalidade(pen)}` : ""}`,
+                    }));
+                  }}
                   className={`rounded-sm px-2.5 py-1 ${t.chip}`}
                   disabled={rolando}
                 >
@@ -558,5 +598,41 @@ function EditorPreset({
         </div>
       </form>
     </div>
+  );
+}
+
+/** Lembrete do que as condições estão mudando nas rolagens. */
+function AvisoCondicoes({ c, escuro }: { c: EstadoCondicoes; escuro?: boolean }) {
+  const linhas: string[] = [];
+  const geral = c.dados({ atributo: null });
+  if (geral.n) linhas.push(`Todos os testes: –${geral.n}d (${geral.de.join(", ")}).`);
+  const porAtr = new Map<string, Atributo[]>();
+  for (const a of ATRIBUTOS) {
+    const p = c.dados({ atributo: a });
+    if (p.n > geral.n) {
+      const k = `–${p.n}d (${p.de.join(", ")})`;
+      porAtr.set(k, [...(porAtr.get(k) ?? []), a]);
+    }
+  }
+  for (const [k, as] of porAtr) linhas.push(`Testes de ${as.join(", ")}: ${k}.`);
+  const ataque = c.dados({ atributo: null, ataque: true });
+  if (ataque.n > geral.n) linhas.push(`Ataques: –${ataque.n}d (${ataque.de.join(", ")}).`);
+  const cac = c.dados({ atributo: null, ataque: true, corpoACorpo: true });
+  if (cac.n > ataque.n) linhas.push(`Ataques corpo a corpo: –${cac.n}d (${cac.de.join(", ")}).`);
+  if (c.custoPE) linhas.push(`Rituais e habilidades custam +${c.custoPE} PE.`);
+  if (c.acoes) linhas.push(c.acoes.tipo === "nenhuma" ? `Sem ações (${c.acoes.de}).` : c.acoes.tipo === "uma" ? `Só uma ação padrão ou de movimento (${c.acoes.de}).` : `Só ações mentais (${c.acoes.de}).`);
+  if (!linhas.length) return null;
+  return (
+    <section
+      className={`rounded-sm border px-3 py-2 text-sm ${escuro ? "border-sangue-vivo/50 bg-sangue/20 text-nevoa" : "border-sangue-vivo/50 bg-sangue/10 text-tinta"}`}
+      aria-label="Condições nas rolagens"
+    >
+      <p className="titulo">As condições já entram nas rolagens</p>
+      <ul className="mt-0.5 list-disc pl-5">
+        {linhas.map((l) => (
+          <li key={l}>{l}</li>
+        ))}
+      </ul>
+    </section>
   );
 }

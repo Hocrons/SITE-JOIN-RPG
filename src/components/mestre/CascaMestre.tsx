@@ -8,6 +8,7 @@ import { Conexao } from "@/components/Conexao";
 import type { StatusConexao } from "@/lib/aoVivo";
 import { JanelaBackup } from "@/components/mestre/JanelaBackup";
 import { JanelaPins } from "@/components/mestre/JanelaPins";
+import { IconeGlossario, JanelaGlossario } from "@/components/Glossario";
 import { useCombateAtivo } from "@/lib/combate";
 import { useSessao } from "@/lib/sessao";
 
@@ -39,7 +40,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
   const { carregando, membro, mesa, eMestre, sair } = useSessao();
   const { ativo: combate } = useCombateAtivo(mesa?.id);
   const [menu, setMenu] = useState(false);
-  const [janela, setJanela] = useState<"" | "pins" | "backup">("");
+  const [janela, setJanela] = useState<"" | "pins" | "backup" | "glossario">("");
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,6 +91,15 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
               <Conexao status={status} escuro />
             </span>
           )}
+          <button
+            onClick={() => setJanela("glossario")}
+            title="Glossário de condições"
+            aria-label="Glossário de condições"
+            className="flex items-center gap-1.5 rounded-sm border border-ouro/30 px-2.5 py-1.5 text-ouro-claro hover:bg-ouro/10"
+          >
+            <IconeGlossario />
+            <span className="hidden xl:inline">Condições</span>
+          </button>
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenu(!menu)}
@@ -144,6 +154,7 @@ export function CascaMestre({ subtitulo, status, largo, children }: Props) {
       </nav>
 
       {janela === "backup" && <JanelaBackup mesaId={mesa.id} mesaNome={mesa.nome} onFechar={() => setJanela("")} />}
+      {janela === "glossario" && <JanelaGlossario onFechar={() => setJanela("")} />}
       {janela === "pins" && <JanelaPins mesaId={mesa.id} onFechar={() => setJanela("")} />}
     </main>
   );
