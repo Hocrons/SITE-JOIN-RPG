@@ -18,6 +18,8 @@ export interface Preset {
   margem: number;
   multiplicador: number;
   ordem: number;
+  /** Só nas rolagens da ficha: quantos termos de dados multiplicam no crítico. */
+  dadosCrit?: number | null;
 }
 
 const RE_EXPRESSAO = /^[+-]?(\d*d\d+(k[hl]\d+)?|\d+)([+-](\d*d\d+(k[hl]\d+)?|\d+))*$/;
@@ -36,6 +38,8 @@ export interface PedidoRolagem {
   margem?: number;
   multiplicador?: number;
   critico?: boolean;
+  /** Quantos termos de dados (do começo) multiplicam no crítico. Sem valor: todos. */
+  dadosCrit?: number | null;
 }
 
 /** Rola no servidor (o sorteio acontece no banco, então ninguém trapaceia). */
@@ -49,6 +53,7 @@ export async function rolar(p: PedidoRolagem): Promise<Rolagem> {
     p_margem: p.margem ?? 20,
     p_multiplicador: p.multiplicador ?? 2,
     p_critico: p.critico ?? false,
+    ...(p.dadosCrit != null ? { p_dados_crit: p.dadosCrit } : {}),
   });
   if (error) throw new Error(error.message);
   return data as Rolagem;

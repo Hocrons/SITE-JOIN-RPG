@@ -239,32 +239,68 @@ export function categoriaFinal(i: Pick<ItemPersonagem, "categoria" | "melhorias"
   return { base, final: base + soma, soma, texto: romano(base + soma) };
 }
 
-/** Efeitos numéricos que as melhorias dão numa arma (para o preset de dados e o resumo). */
+/** Efeitos numéricos que as melhorias dão numa arma (para as rolagens e o resumo). */
 export function efeitosArma(melhorias: Melhoria[] = []) {
-  const e = { ataque: 0, danoExtra: [] as string[], ameaca: 0, dobraMargem: false, multiplicador: 0, dadoExtra: 0 };
+  const e = {
+    ataque: 0,
+    /** dados extras que também multiplicam no crítico (a maldição diz isso) */
+    dadosMultiplicam: [] as string[],
+    /** dados extras que não multiplicam no crítico */
+    dadosExtras: [] as string[],
+    fixo: 0,
+    ameaca: 0,
+    dobraMargem: false,
+    multiplicador: 0,
+    dadoExtra: 0,
+  };
   for (const m of melhorias) {
     const n = normalizar(m.nome).replace(/\s*\(.*\)$/, "");
     if (n === "certeira" || n === "alongada") e.ataque += 2;
-    else if (n === "cruel") e.danoExtra.push("2");
+    else if (n === "cruel") e.fixo += 2;
     else if (n === "perigosa" || n === "mira laser") e.ameaca += 2;
     else if (n === "dum dum") e.multiplicador += 1;
     else if (n === "calibre grosso") e.dadoExtra += 1;
-    else if (n === "explosiva") e.danoExtra.push("2d6");
+    else if (n === "explosiva") e.dadosExtras.push("2d6");
     else if (n === "predadora") e.dobraMargem = true;
-    else if (n === "lancinante" || n === "erosiva") e.danoExtra.push("1d8");
+    else if (n === "lancinante") e.dadosMultiplicam.push("1d8");
+    else if (n === "erosiva") e.dadosExtras.push("1d8");
   }
   return e;
 }
 
-/** Aplica os efeitos a margem, multiplicador e dano de uma arma. */
-export function armaComMelhorias(dano: string, margem: number, multiplicador: number, melhorias: Melhoria[] = []) {
+/**
+ * Dano, margem e multiplicador finais de uma arma.
+ * A expressão sai na ordem: dados da arma (e os que multiplicam), dados extras, bônus fixos.
+ * `dadosCrit` diz quantos termos de dados do começo multiplicam no crítico (regra da p. 82).
+ */
+export function armaComMelhorias(
+  dano: string,
+  margem: number,
+  multiplicador: number,
+  melhorias: Melhoria[] = [],
+  forca = 0,
+) {
   const e = efeitosArma(melhorias);
   // dobrar a margem vem antes dos aumentos (ex.: 19 → 17, depois −2)
   let faixa = 21 - margem;
   if (e.dobraMargem) faixa *= 2;
   faixa += e.ameaca;
-  let expr = dano.trim();
-  if (e.dadoExtra) expr = expr.replace(/^(\d*)d(\d+)/i, (_, q, f) => `${(Number(q) || 1) + e.dadoExtra}d${f}`);
-  for (const x of e.danoExtra) expr += `+${x}`;
-  return { dano: expr, margem: Math.max(2, 21 - faixa), multiplicador: multiplicador + e.multiplicador, ataque: e.ataque };
+
+  const partes = dano.toLowerCase().replace(/\s/g, "").match(/[+-]?[^+-]+/g) ?? [];
+  const daArma = partes.filter((t) => /d/.test(t)).map((t) => t.replace(/^\+/, ""));
+  let fixoArma = partes.filter((t) => !/d/.test(t)).reduce((n, t) => n + Number(t), 0);
+  if (e.dadoExtra && daArma[0]) {
+    daArma[0] = daArma[0].replace(/^(\d*)d(\d+)/, (_, q, f) => `${(Number(q) || 1) + e.dadoExtra}d${f}`);
+  }
+  const multiplicam = [...daArma, ...e.dadosMultiplicam];
+  fixoArma += e.fixo + forca;
+  let expr = [...multiplicam, ...e.dadosExtras].join("+");
+  if (fixoArma) expr += fixoArma > 0 ? `+${fixoArma}` : `${fixoArma}`;
+  return {
+    dano: expr,
+    margem: Math.max(2, 21 - faixa),
+    multiplicador: multiplicador + e.multiplicador,
+    ataque: e.ataque,
+    dadosCrit: multiplicam.length,
+  };
 }

@@ -52,6 +52,7 @@ export function rolagensDaFicha(
   itens: ItemPersonagem[],
   catalogo: Map<string, EntradaCatalogo>,
   pericias: Pericia[],
+  atributos: Partial<Record<Atributo, number>> = {},
 ): GrupoFicha[] {
   const armas: RolagemFicha[] = [];
   const rituais: RolagemFicha[] = [];
@@ -66,9 +67,12 @@ export function rolagensDaFicha(
     if (c?.tipo === "arma" && d.dano) {
       const sub = String(d.subtipo ?? "");
       const corpo = /corpo a corpo/i.test(sub);
+      const arremesso = /arremess/i.test(`${sub} ${c.resumo}`);
       const pericia = corpo ? "Luta" : "Pontaria";
       const atributo: Atributo = corpo ? "FOR" : "AGI";
-      const arma = armaComMelhorias(String(d.dano).split("/")[0], Number(d.margem ?? 20), Number(d.multiplicador ?? 2), mel);
+      // corpo a corpo e arremesso somam a Força no dano (não multiplica no crítico)
+      const forca = corpo || arremesso ? atributos.FOR ?? 0 : 0;
+      const arma = armaComMelhorias(String(d.dano).split("/")[0], Number(d.margem ?? 20), Number(d.multiplicador ?? 2), mel, forca);
       armas.push({
         origem: i.nome,
         preset: presetVirtual(i.id, {
@@ -79,8 +83,11 @@ export function rolagensDaFicha(
           margem: arma.margem,
           multiplicador: arma.multiplicador,
           expressao: arma.dano,
+          dadosCrit: arma.dadosCrit,
         }),
-        nota: [`${pericia}`, mel.length ? mel.map((m) => m.nome).join(", ") : null].filter(Boolean).join("; "),
+        nota: [`${pericia}`, forca ? `Força +${forca} no dano` : null, mel.length ? mel.map((m) => m.nome).join(", ") : null]
+          .filter(Boolean)
+          .join("; "),
       });
       continue;
     }

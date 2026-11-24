@@ -47,7 +47,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
   const itensFicha = useItensPersonagem(personagemId ? mesaId : null, personagemId);
   const { todos: catalogo } = useCatalogo(personagemId ? mesaId : null);
   const daFicha = personagemId
-    ? rolagensDaFicha(itensFicha.linhas, new Map(catalogo.map((c) => [c.id, c])), pericias)
+    ? rolagensDaFicha(itensFicha.linhas, new Map(catalogo.map((c) => [c.id, c])), pericias, atributos)
     : [];
   const totalFicha = daFicha.reduce((n, g) => n + g.itens.length, 0);
   const [abaPresets, setAbaPresets] = useState<"ficha" | "meus">("ficha");
@@ -92,6 +92,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
         titulo: `${p.titulo}: dano${ataque.critico ? " crítico" : ""}`,
         multiplicador: p.multiplicador,
         critico: ataque.critico,
+        dadosCrit: p.dadosCrit,
       }));
     }
     if (p.tipo === "dano") return executar(() => ({ ...base, expressao: p.expressao, titulo: p.titulo, multiplicador: p.multiplicador }));
@@ -105,6 +106,7 @@ export function Rolador({ mesaId, personagemId, atributos, pericias = [], eMestr
       titulo: `${p.titulo}: dano crítico`,
       multiplicador: p.multiplicador,
       critico: true,
+      dadosCrit: p.dadosCrit,
     }));
   }
 

@@ -103,7 +103,8 @@ export interface Rolagem {
   personagem_id: string | null;
   titulo: string | null;
   expressao: string;
-  detalhes: { termos: TermoRolagem[]; margem: number; critico_aplicado: boolean; multiplicador: number };
+  detalhes: { termos: TermoRolagem[]; margem: number; critico_aplicado: boolean;
+    dados_crit?: number | null; multiplicador: number };
   total: number;
   critico: boolean;
   secreta: boolean;

@@ -149,7 +149,13 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                     : [i.categoria && `cat. ${i.categoria}`, i.espacos && `${i.espacos} esp.`].filter(Boolean).join(", ");
                 const arma =
                   c?.tipo === "arma" && c.dados.dano && mel.length
-                    ? armaComMelhorias(String(c.dados.dano).split("/")[0], Number(c.dados.margem ?? 20), Number(c.dados.multiplicador ?? 2), mel)
+                    ? armaComMelhorias(
+                        String(c.dados.dano).split("/")[0],
+                        Number(c.dados.margem ?? 20),
+                        Number(c.dados.multiplicador ?? 2),
+                        mel,
+                        /corpo a corpo|arremess/i.test(String(c.dados.subtipo ?? "")) ? forca : 0,
+                      )
                     : null;
                 return (
                   <li key={i.id} className="py-2">

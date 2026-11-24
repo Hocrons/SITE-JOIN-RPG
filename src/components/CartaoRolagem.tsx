@@ -81,7 +81,7 @@ export function CartaoRolagem({ r, escuro, destaque }: Props) {
       {(r.critico || r.secreta || r.detalhes?.critico_aplicado) && (
         <footer className="mt-1 flex flex-wrap gap-2 text-sm">
           {r.critico && <span className="titulo text-ouro">Crítico!</span>}
-          {r.detalhes?.critico_aplicado && <span className="italic opacity-80">dano crítico (dados ×{r.detalhes.multiplicador})</span>}
+          {r.detalhes?.critico_aplicado && <span className="italic opacity-80">dano crítico ({r.detalhes.dados_crit != null ? "dados da arma" : "dados"} ×{r.detalhes.multiplicador})</span>}
           {r.secreta && <span className="italic opacity-70">🔒 só o mestre vê</span>}
         </footer>
       )}
