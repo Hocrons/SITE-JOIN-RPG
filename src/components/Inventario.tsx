@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { NavegadorCatalogo } from "./NavegadorCatalogo";
 import {
-  TIPOS, armaComMelhorias, capacidadeCarga, categoriaFinal, detalhes, linhaCurta, useCatalogo, useItensPersonagem,
+  TIPOS, armaComMelhorias, avisoEncaixe, capacidadeCarga, categoriaFinal, detalhes, linhaCurta, useCatalogo, useItensPersonagem,
   type EntradaCatalogo, type ItemPersonagem, type Melhoria, type Secao,
 } from "@/lib/catalogo";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +46,8 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
   async function aplicar(i: ItemPersonagem, e: EntradaCatalogo) {
     const atuais = i.melhorias ?? [];
     if (atuais.some((m) => m.nome === e.nome)) return alert(`${i.nome} já tem ${e.nome}. Iguais não se acumulam.`);
+    const aviso = avisoEncaixe(e, i, i.catalogo_id ? porId.get(i.catalogo_id) : undefined);
+    if (aviso && !confirm(`${aviso}\n\nAplicar mesmo assim?`)) return;
     const nova: Melhoria = {
       id: crypto.randomUUID(),
       catalogo_id: e.id,
@@ -196,6 +198,14 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                                       <b className="font-semibold text-marinho">{m.nome}</b>
                                       {m.tipo === "maldicao" && m.elemento ? <span className="text-tinta-suave"> ({m.elemento})</span> : null}
                                       <span className="block text-sm">{m.efeito}</span>
+                                      {(() => {
+                                        const aviso = avisoEncaixe(m.catalogo_id ? porId.get(m.catalogo_id) : undefined, i, c);
+                                        return aviso ? (
+                                          <span className="mt-0.5 block text-sm font-semibold text-pv" role="note">
+                                            ⚠ {aviso}
+                                          </span>
+                                        ) : null;
+                                      })()}
                                     </span>
                                     <button onClick={() => tirarMelhoria(i, m)} className="px-1 text-tinta-suave hover:text-pv" aria-label={`Tirar ${m.nome}`}>
                                       ✕
@@ -313,8 +323,12 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
               {semItem.tipo === "maldicao" ? "Maldições" : "Modificações"} entram no item e aumentam a categoria dele.
             </p>
             <ul className="mt-2 max-h-72 divide-y divide-ouro-escuro/15 overflow-auto">
-              {itens.linhas.filter(aceitaMelhoria).map((i) => (
-                <li key={i.id}>
+              {itens.linhas
+                .filter(aceitaMelhoria)
+                .map((i) => ({ i, aviso: avisoEncaixe(semItem, i, i.catalogo_id ? porId.get(i.catalogo_id) : undefined) }))
+                .sort((a, b) => Number(!!a.aviso) - Number(!!b.aviso))
+                .map(({ i, aviso }) => (
+                <li key={i.id} className={aviso ? "opacity-60" : ""}>
                   <button
                     className="w-full py-2 text-left"
                     onClick={() => {
@@ -325,7 +339,10 @@ export function Inventario({ personagem: p, forca, dados, userId }: Props) {
                     }}
                   >
                     <span className="titulo text-marinho">{i.nome}</span>
-                    <span className="block text-sm italic text-tinta-suave">{TIPOS[i.tipo ?? ""]?.rotulo ?? "Item"}</span>
+                    <span className="block text-sm italic text-tinta-suave">
+                      {TIPOS[i.tipo ?? ""]?.rotulo ?? "Item"}
+                      {aviso ? ", não combina" : ""}
+                    </span>
                   </button>
                 </li>
               ))}

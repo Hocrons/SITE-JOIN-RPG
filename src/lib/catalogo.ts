@@ -304,3 +304,70 @@ export function armaComMelhorias(
     dadosCrit: multiplicam.length,
   };
 }
+
+// ------------------------------------------------------------------ onde cada melhoria pode entrar
+
+type Encaixe = "corpo" | "disparo" | "fogo" | "arma" | "municao" | "protecao" | "acessorio" | "granada" | "medicamento";
+
+const NOME_ENCAIXE: Record<Encaixe, string> = {
+  corpo: "armas corpo a corpo",
+  disparo: "armas de disparo",
+  fogo: "armas de fogo",
+  arma: "armas",
+  municao: "munições",
+  protecao: "proteções",
+  acessorio: "acessórios",
+  granada: "granadas",
+  medicamento: "medicamentos",
+};
+
+/** Que tipo de coisa o item é, para saber quais melhorias aceita. null = não dá para saber (não avisa). */
+function encaixesDoItem(tipo: string | null, subtipo: string, nome: string): Encaixe[] | null {
+  const s = normalizar(subtipo);
+  if (tipo === "arma") {
+    if (s.includes("corpo a corpo")) return ["corpo", "arma"];
+    if (s.includes("disparo")) return ["disparo", "arma"];
+    if (s.includes("fogo") || s.includes("a distancia")) return ["fogo", "arma"];
+    return ["arma"];
+  }
+  if (tipo === "municao") return ["municao"];
+  if (tipo === "protecao") return ["protecao"];
+  if (tipo === "item") {
+    if (normalizar(nome) === "soqueira") return ["corpo", "arma"];
+    if (s.includes("explosivo")) return ["granada"];
+    if (s.includes("medicamento")) return ["medicamento"];
+    if (s.includes("acessorio") || s.includes("operacional") || s.includes("geral")) return ["acessorio"];
+    return null;
+  }
+  return null;
+}
+
+/** Para que serve a melhoria, pelo subtipo do catálogo. */
+function encaixesDaMelhoria(subtipo: string): Encaixe[] | null {
+  const s = normalizar(subtipo).replace("maldicao para ", "");
+  if (s.includes("corpo a corpo e de disparo")) return ["corpo", "disparo"];
+  if (s.includes("armas de fogo")) return ["fogo"];
+  if (s.startsWith("armas")) return ["arma"];
+  if (s.includes("munic")) return ["municao"];
+  if (s.includes("protec")) return ["protecao"];
+  if (s.includes("acessorio")) return ["acessorio"];
+  if (s.includes("granada")) return ["granada"];
+  if (s.includes("medicamento")) return ["medicamento"];
+  return null;
+}
+
+/**
+ * Se a modificação/maldição não combina com o item, devolve o aviso; se combina (ou não dá para saber), null.
+ */
+export function avisoEncaixe(
+  melhoria: Pick<EntradaCatalogo, "nome" | "dados"> | undefined,
+  item: Pick<ItemPersonagem, "tipo" | "nome">,
+  itemCatalogo: Pick<EntradaCatalogo, "dados"> | undefined,
+): string | null {
+  if (!melhoria) return null;
+  const para = encaixesDaMelhoria(String(melhoria.dados.subtipo ?? ""));
+  const eh = encaixesDoItem(item.tipo, String(itemCatalogo?.dados.subtipo ?? ""), item.nome);
+  if (!para || !eh) return null;
+  if (para.some((p) => eh.includes(p))) return null;
+  return `${melhoria.nome} é para ${para.map((p) => NOME_ENCAIXE[p]).join(" e ")}; ${item.nome} não é.`;
+}
