@@ -89,7 +89,7 @@ psql -d paratus_teste -f supabase/test/test_regras.sql
 - [x] 5. Combate/iniciativa
 - [x] 6. Códice da Lore com grafo, visibilidade por entrada e conexão, e a lore inicial do Notion
 - [x] 7. Lore pessoal do jogador (estilo Obsidian): notas com [[links]], "mencionada em", grafo; o mestre lê
-- [ ] 8. Quadro de investigação
+- [x] 8. Quadro de investigação: arquivos do mestre registrados, cartões, notas e fios, todos ao vivo
 - [ ] 9. Linha do tempo
 - [ ] 10. Polimento final e backup
 
