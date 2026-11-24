@@ -45,7 +45,7 @@ export function useMesa(mesaId: string | null | undefined, eMestre: boolean) {
 
   const { setLinhas: setPersonagens, recarregar: recarregarPersonagens } = personagens;
 
-  /** +/- atômico no servidor (mexe no total perdido); mostra na hora e o servidor confirma o valor certo. */
+  /** +/- atômico no servidor; mostra na hora e o servidor confirma com o limite da ficha ativa. */
   const ajustar = useCallback(
     async (p: Personagem, campo: CampoStatus, delta: number) => {
       setPersonagens((l) =>
